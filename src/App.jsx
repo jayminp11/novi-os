@@ -277,7 +277,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
       {/* Welcome bar */}
       <div style={{background:"linear-gradient(135deg,rgba(0,229,170,0.06),rgba(79,195,247,0.04))",border:"1px solid rgba(0,229,170,0.1)",borderRadius:14,padding:"18px 22px",marginBottom:18}}>
         <div style={{fontSize:10,color:"#00E5AA",letterSpacing:2,marginBottom:3}}>
-          {new Date().getHours()<12?"GOOD MORNING":"new Date().getHours()<17?"GOOD AFTERNOON":"GOOD EVENING"}, JAYMIN
+          {new Date().getHours()<12?"GOOD MORNING":new Date().getHours()<17?"GOOD AFTERNOON":"GOOD EVENING"}, JAYMIN
         </div>
         <div style={{fontSize:17,fontWeight:600,marginBottom:8}}>NOVI Company Status — {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</div>
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
