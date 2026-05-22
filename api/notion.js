@@ -5,398 +5,459 @@
 // ✅ Tasks visible
 // ✅ "Untitled" fixed
 // ✅ Frontend compatibility preserved
+// ✅ Better parsing + safer fallbacks
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const BASE         = "https://api.notion.com/v1";
+const BASE = "[https://api.notion.com/v1](https://api.notion.com/v1)";
 
 // ── DATABASE IDS ──────────────────────────────────────────────────────────────
 const DB = {
-  departmentUpdates : "74366ef5e20f4bea89c1a6ecce710d17",
-  tasks             : "36009180590980098e44f907ba6c249a",
-  eodReports        : "3610918059098072b685c2fc076ae423",
-  decisionLog       : "3620918059098002b3abfcc50cfabe5e",
-  weeklyReviews     : "3610918059098067b08fd6a4a46bb439",
-  todaysPriorities  : "360091805909808fa909ce8831c1bcb8",
-  deptUpdatesFeed   : "36009180590980b39ee7c9b76be0e1ad",
+departmentUpdates : "74366ef5e20f4bea89c1a6ecce710d17",
+tasks             : "36009180590980098e44f907ba6c249a",
+eodReports        : "3610918059098072b685c2fc076ae423",
+decisionLog       : "3620918059098002b3abfcc50cfabe5e",
+weeklyReviews     : "3610918059098067b08fd6a4a46bb439",
+todaysPriorities  : "360091805909808fa909ce8831c1bcb8",
+deptUpdatesFeed   : "36009180590980b39ee7c9b76be0e1ad",
 };
 
 // ── VALID OPTIONS ─────────────────────────────────────────────────────────────
 const OPTS = {
-  departments : [
-    "HQ",
-    "Formulations",
-    "COO",
-    "CFO",
-    "CLO",
-    "CMO",
-    "Market Strategy",
-    "Operations",
-    "Vendors",
-    "Compliance"
-  ],
 
-  priority : [
-    "Low",
-    "Medium",
-    "High",
-    "Critical"
-  ],
+departments : [
+"HQ",
+"Formulations",
+"COO",
+"CFO",
+"CLO",
+"CMO",
+"Market Strategy",
+"Operations",
+"Vendors",
+"Compliance"
+],
 
-  deptStatus : [
-    "Planned",
-    "In Progress",
-    "Blocked",
-    "Completed",
-    "On Hold"
-  ],
+priority : [
+"Low",
+"Medium",
+"High",
+"Critical"
+],
 
-  taskStatus : [
-    "Not Started",
-    "In Progress",
-    "Blocked",
-    "Completed",
-    "Deferred"
-  ],
+deptStatus : [
+"Planned",
+"In Progress",
+"Blocked",
+"Completed",
+"On Hold"
+],
 
-  eodStatus : [
-    "On Track",
-    "Delayed",
-    "Critical",
-    "Blocked"
-  ],
+taskStatus : [
+"Not Started",
+"In Progress",
+"Blocked",
+"Completed",
+"Deferred"
+],
 
-  approval : [
-    "Approved",
-    "Pending",
-    "Rejected",
-    "Deferred"
-  ],
+eodStatus : [
+"On Track",
+"Delayed",
+"Critical",
+"Blocked"
+],
+
+approval : [
+"Approved",
+"Pending",
+"Rejected",
+"Deferred"
+],
 };
 
 const safe = (val, allowed, fallback) =>
-  allowed.includes(val) ? val : fallback;
+allowed.includes(val) ? val : fallback;
 
 // ── NOTION FETCH ──────────────────────────────────────────────────────────────
 const nFetch = async (path, method = "GET", body = null) => {
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
+const res = await fetch(`${BASE}${path}`, {
+method,
 
-    headers: {
-      "Authorization"  : `Bearer ${NOTION_TOKEN}`,
-      "Notion-Version" : "2022-06-28",
-      "Content-Type"   : "application/json",
-    },
+```
+headers: {
+  "Authorization"  : `Bearer ${NOTION_TOKEN}`,
+  "Notion-Version" : "2022-06-28",
+  "Content-Type"   : "application/json",
+},
 
-    body: body ? JSON.stringify(body) : undefined,
-  });
+body: body ? JSON.stringify(body) : undefined,
+```
 
-  const data = await res.json();
+});
 
-  if (!res.ok) {
-    console.error("NOTION API ERROR:", data);
-    throw new Error(data.message || "Notion API Error");
-  }
+const data = await res.json();
 
-  return data;
+if (!res.ok) {
+console.error("NOTION API ERROR:", data);
+throw new Error(data.message || "Notion API Error");
+}
+
+return data;
 };
 
 // ── PROPERTY HELPERS ──────────────────────────────────────────────────────────
 const prop = {
 
-  title: (v) => ({
-    title: [
-      {
-        text: {
-          content: String(v || "").slice(0, 2000)
-        }
-      }
-    ]
-  }),
+title: (v) => ({
+title: [
+{
+text: {
+content: String(v || "").slice(0, 2000)
+}
+}
+]
+}),
 
-  text: (v) => ({
-    rich_text: [
-      {
-        text: {
-          content: String(v || "").slice(0, 2000)
-        }
-      }
-    ]
-  }),
+text: (v) => ({
+rich_text: [
+{
+text: {
+content: String(v || "").slice(0, 2000)
+}
+}
+]
+}),
 
-  select: (v) => ({
-    select: {
-      name: String(v || "")
-    }
-  }),
+select: (v) => ({
+select: {
+name: String(v || "")
+}
+}),
 
-  multiSelect: (v) => ({
-    multi_select: (Array.isArray(v) ? v : [v]).map(n => ({
-      name: String(n)
-    }))
-  }),
+multiSelect: (v) => ({
+multi_select: (Array.isArray(v) ? v : [v]).map(n => ({
+name: String(n)
+}))
+}),
 
-  date: (v) => ({
-    date: {
-      start: v || new Date().toISOString().split("T")[0]
-    }
-  }),
+date: (v) => ({
+date: {
+start: v || new Date().toISOString().split("T")[0]
+}
+}),
 
-  checkbox: (v) => ({
-    checkbox: Boolean(v)
-  }),
+checkbox: (v) => ({
+checkbox: Boolean(v)
+}),
 };
 
 // ── PROPERTY EXTRACTOR ────────────────────────────────────────────────────────
 const extract = (p) => {
 
-  if (!p) return "";
+if (!p) return "";
 
-  switch (p.type) {
+switch (p.type) {
 
-    case "title":
-      return p.title?.map(t => t.plain_text).join("") || "";
+```
+case "title":
+  return p.title?.map(t => t.plain_text).join("") || "";
 
-    case "rich_text":
-      return p.rich_text?.map(t => t.plain_text).join("") || "";
+case "rich_text":
+  return p.rich_text?.map(t => t.plain_text).join("") || "";
 
-    case "select":
-      return p.select?.name || "";
+case "select":
+  return p.select?.name || "";
 
-    case "multi_select":
-      return p.multi_select?.map(t => t.name).join(", ") || "";
+case "multi_select":
+  return p.multi_select?.map(t => t.name).join(", ") || "";
 
-    case "date":
-      return p.date?.start || "";
+case "date":
+  return p.date?.start || "";
 
-    case "checkbox":
-      return p.checkbox ? "Yes" : "No";
+case "checkbox":
+  return p.checkbox ? "Yes" : "No";
 
-    case "status":
-      return p.status?.name || "";
+case "status":
+  return p.status?.name || "";
 
-    default:
-      return "";
-  }
+case "people":
+  return p.people?.map(p => p.name).join(", ") || "";
+
+case "email":
+  return p.email || "";
+
+case "phone_number":
+  return p.phone_number || "";
+
+case "url":
+  return p.url || "";
+
+case "number":
+  return p.number || "";
+
+default:
+  return "";
+```
+
+}
 };
 
 // ── PARSER ────────────────────────────────────────────────────────────────────
 const parse = (pages) => pages.map(page => {
 
-  const obj = {
-    _id  : page.id,
-    _url : page.url
-  };
+const obj = {
+_id  : page.id,
+_url : page.url
+};
 
-  Object.entries(page.properties || {}).forEach(([k, v]) => {
-    obj[k] = extract(v);
-  });
+// Extract all properties
+Object.entries(page.properties || {}).forEach(([k, v]) => {
+obj[k] = extract(v);
+});
 
-  // ── TASK TITLE FIX ────────────────────────────────────────────────────────
+// ── UNIVERSAL TITLE DETECTION ────────────────────────────────────────────
 
-  const taskTitle =
-    obj["Task Name"] ||
-    obj["Name"] ||
-    "";
+const titleField =
+obj["Task Name"] ||
+obj["Decision Title"] ||
+obj["Summary"] ||
+obj["Name"] ||
+obj["Title"] ||
+obj["Task"] ||
+obj["Decision"] ||
+obj["Department"] ||
+"";
 
-  // compatibility for frontend
-  obj.title = taskTitle;
-  obj.Name  = taskTitle;
+// Standardized aliases
+obj.title = titleField;
+obj.Name  = titleField;
 
-  return obj;
+// ── SAFE FALLBACKS ───────────────────────────────────────────────────────
+
+if (!obj["Task Name"]) {
+obj["Task Name"] = titleField || "Untitled Task";
+}
+
+if (!obj["Decision Title"]) {
+obj["Decision Title"] = titleField || "Untitled Decision";
+}
+
+if (!obj["Summary"]) {
+obj["Summary"] = titleField || "";
+}
+
+if (!obj["Department"]) {
+obj["Department"] = "HQ";
+}
+
+if (!obj["Status"]) {
+obj["Status"] = "Not Started";
+}
+
+if (!obj["Priority"]) {
+obj["Priority"] = "Medium";
+}
+
+return obj;
 });
 
 // ── QUERY DATABASE ────────────────────────────────────────────────────────────
 const queryDB = async (dbId, sorts = null, filter = null) => {
 
-  const body = {
-    page_size: 100
-  };
+const body = {
+page_size: 100
+};
 
-  if (sorts) {
-    body.sorts = sorts;
-  }
+if (sorts) {
+body.sorts = sorts;
+}
 
-  if (filter) {
-    body.filter = filter;
-  }
+if (filter) {
+body.filter = filter;
+}
 
-  const data = await nFetch(
-    `/databases/${dbId}/query`,
-    "POST",
-    body
-  );
+const data = await nFetch(
+`/databases/${dbId}/query`,
+"POST",
+body
+);
 
-  return parse(data.results || []);
+return parse(data.results || []);
 };
 
 // ── CREATE PAGE ───────────────────────────────────────────────────────────────
 const createPage = async (dbId, properties) => {
 
-  return nFetch("/pages", "POST", {
-    parent: {
-      database_id: dbId
-    },
-    properties
-  });
+return nFetch("/pages", "POST", {
+parent: {
+database_id: dbId
+},
+properties
+});
 };
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const cors = (res) => {
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
+res.setHeader("Access-Control-Allow-Origin", "*");
 
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,OPTIONS"
-  );
+res.setHeader(
+"Access-Control-Allow-Methods",
+"GET,POST,OPTIONS"
+);
 
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type"
-  );
+res.setHeader(
+"Access-Control-Allow-Headers",
+"Content-Type"
+);
 };
 
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
 
-  cors(res);
+cors(res);
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+if (req.method === "OPTIONS") {
+return res.status(200).end();
+}
 
-  const { action, payload } = req.body || {};
+const { action, payload } = req.body || {};
 
-  try {
+try {
 
-    // ── GET TASKS ────────────────────────────────────────────────────────────
-    if (action === "getTasks") {
+```
+// ── GET TASKS ────────────────────────────────────────────────────────────
+if (action === "getTasks") {
 
-      const items = await queryDB(DB.tasks, [
-        {
-          property : "Status",
-          direction: "ascending"
-        },
+  const items = await queryDB(DB.tasks, [
+    {
+      property : "Status",
+      direction: "ascending"
+    },
 
-        {
-          property : "Priority",
-          direction: "descending"
-        }
-      ]);
-
-      return res.json({
-        ok: true,
-        items
-      });
+    {
+      property : "Priority",
+      direction: "descending"
     }
+  ]);
 
-    // ── GET DEPARTMENT UPDATES ──────────────────────────────────────────────
-    if (action === "getDeptUpdates") {
+  return res.json({
+    ok: true,
+    items
+  });
+}
 
-      const items = await queryDB(DB.departmentUpdates, [
-        {
-          timestamp : "created_time",
-          direction : "descending"
-        }
-      ]);
+// ── GET DEPARTMENT UPDATES ──────────────────────────────────────────────
+if (action === "getDeptUpdates") {
 
-      return res.json({
-        ok: true,
-        items
-      });
+  const items = await queryDB(DB.departmentUpdates, [
+    {
+      timestamp : "created_time",
+      direction : "descending"
     }
+  ]);
 
-    // ── GET DECISIONS ───────────────────────────────────────────────────────
-    if (action === "getDecisions") {
+  return res.json({
+    ok: true,
+    items
+  });
+}
 
-      const items = await queryDB(DB.decisionLog, [
-        {
-          timestamp : "created_time",
-          direction : "descending"
-        }
-      ]);
+// ── GET DECISIONS ───────────────────────────────────────────────────────
+if (action === "getDecisions") {
 
-      return res.json({
-        ok: true,
-        items
-      });
+  const items = await queryDB(DB.decisionLog, [
+    {
+      timestamp : "created_time",
+      direction : "descending"
     }
+  ]);
 
-    // ── GET EOD REPORTS ─────────────────────────────────────────────────────
-    if (action === "getEODReports") {
+  return res.json({
+    ok: true,
+    items
+  });
+}
 
-      const items = await queryDB(DB.eodReports, [
-        {
-          property : "Date",
-          direction: "descending"
-        }
-      ]);
+// ── GET EOD REPORTS ─────────────────────────────────────────────────────
+if (action === "getEODReports") {
 
-      return res.json({
-        ok: true,
-        items
-      });
+  const items = await queryDB(DB.eodReports, [
+    {
+      property : "Date",
+      direction: "descending"
     }
+  ]);
 
-    // ── CREATE TASK ─────────────────────────────────────────────────────────
-    if (action === "createTask") {
+  return res.json({
+    ok: true,
+    items
+  });
+}
 
-      const {
-        taskName,
-        department,
-        priority,
-        status,
-        owner,
-        deadline,
-        dependency,
-        notes
-      } = payload;
+// ── CREATE TASK ─────────────────────────────────────────────────────────
+if (action === "createTask") {
 
-      await createPage(DB.tasks, {
+  const {
+    taskName,
+    department,
+    priority,
+    status,
+    owner,
+    deadline,
+    dependency,
+    notes
+  } = payload;
 
-        "Task Name": prop.title(taskName),
+  await createPage(DB.tasks, {
 
-        "Department": prop.select(
-          safe(department, OPTS.departments, "HQ")
-        ),
+    "Task Name": prop.title(taskName),
 
-        "Priority": prop.select(
-          safe(priority, OPTS.priority, "Medium")
-        ),
+    "Department": prop.select(
+      safe(department, OPTS.departments, "HQ")
+    ),
 
-        "Status": prop.select(
-          safe(status, OPTS.taskStatus, "Not Started")
-        ),
+    "Priority": prop.select(
+      safe(priority, OPTS.priority, "Medium")
+    ),
 
-        "Owner": prop.text(owner || "Jaymin"),
+    "Status": prop.select(
+      safe(status, OPTS.taskStatus, "Not Started")
+    ),
 
-        "Deadline": prop.date(deadline),
+    "Owner": prop.text(owner || "Jaymin"),
 
-        "Dependency": prop.text(dependency || ""),
+    "Deadline": prop.date(deadline),
 
-        "Notes": prop.text(notes || ""),
-      });
+    "Dependency": prop.text(dependency || ""),
 
-      return res.json({
-        ok: true,
-        message: "Task created in Notion"
-      });
-    }
+    "Notes": prop.text(notes || ""),
+  });
 
-    // ── DEFAULT ─────────────────────────────────────────────────────────────
-    return res.status(400).json({
-      ok: false,
-      error: `Unknown action: ${action}`
-    });
+  return res.json({
+    ok: true,
+    message: "Task created in Notion"
+  });
+}
 
-  } catch (err) {
+// ── DEFAULT ─────────────────────────────────────────────────────────────
+return res.status(400).json({
+  ok: false,
+  error: `Unknown action: ${action}`
+});
+```
 
-    console.error("NOTION API ERROR:", err);
+} catch (err) {
 
-    return res.status(500).json({
-      ok: false,
-      error: err.message
-    });
-  }
+```
+console.error("NOTION API ERROR:", err);
+
+return res.status(500).json({
+  ok: false,
+  error: err.message
+});
+```
+
+}
 }
