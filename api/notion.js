@@ -1,8 +1,13 @@
-// ── NOVI OS — FULLY FIXED NOTION API BRIDGE ──────────────────────────────────
-// VERSION: TASK TITLE FIX + CLEAN RESPONSE FORMAT
+// ── NOVI OS — NOTION API BRIDGE ───────────────────────────────────────────────
+// SAFE STABLE VERSION
+// FIXES:
+// ✅ Notion sync
+// ✅ Task titles showing
+// ✅ Keeps frontend compatibility
+// ✅ Prevents "Untitled"
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const BASE = "https://api.notion.com/v1";
+const BASE         = "https://api.notion.com/v1";
 
 // ── DATABASE IDS ──────────────────────────────────────────────────────────────
 const DB = {
@@ -175,49 +180,25 @@ const extract = (p) => {
   }
 };
 
-// ── CLEAN RESPONSE PARSER ─────────────────────────────────────────────────────
+// ── SAFE PARSER ───────────────────────────────────────────────────────────────
 const parse = (pages) => pages.map(page => {
 
-  const raw = {};
+  const obj = {
+    _id  : page.id,
+    _url : page.url
+  };
 
   Object.entries(page.properties || {}).forEach(([k, v]) => {
-    raw[k] = extract(v);
+    obj[k] = extract(v);
   });
 
-  // ── VERY IMPORTANT CLEAN OBJECT ────────────────────────────────────────────
+  // ── SAFE FALLBACKS ─────────────────────────────────────────────────────────
 
-  return {
+  // Fixes Untitled issue
+  obj.Name  = obj.Name  || obj["Task Name"] || "";
+  obj.Title = obj.Title || obj["Task Name"] || "";
 
-    id: page.id,
-    url: page.url,
-
-    // ── TASKS ────────────────────────────────────────────────────────────────
-    taskName: raw["Task Name"] || "",
-    department: raw["Department"] || "",
-    priority: raw["Priority"] || "",
-    status: raw["Status"] || "",
-    owner: raw["Owner"] || "",
-    deadline: raw["Deadline"] || "",
-    dependency: raw["Dependency"] || "",
-    notes: raw["Notes"] || "",
-
-    // ── DEPARTMENT UPDATES ───────────────────────────────────────────────────
-    name: raw["Name"] || "",
-    summary: raw["Summary"] || "",
-    risks: raw["Risks"] || "",
-    nextActions: raw["Next Actions"] || "",
-
-    // ── DECISIONS ────────────────────────────────────────────────────────────
-    decisionTitle: raw["Decision Title"] || "",
-    decisionSummary: raw["Decision Summary"] || "",
-    founderApproval: raw["Founder Approval"] || "",
-    longTermImpact: raw["Long-Term Impact"] || "",
-
-    // ── EOD ──────────────────────────────────────────────────────────────────
-    overallStatus: raw["Overall Status"] || "",
-    majorWins: raw["Major Wins"] || "",
-    keyUpdates: raw["Key Updates"] || "",
-  };
+  return obj;
 });
 
 // ── QUERY DATABASE ────────────────────────────────────────────────────────────
@@ -227,8 +208,13 @@ const queryDB = async (dbId, sorts = null, filter = null) => {
     page_size: 100
   };
 
-  if (sorts) body.sorts = sorts;
-  if (filter) body.filter = filter;
+  if (sorts) {
+    body.sorts = sorts;
+  }
+
+  if (filter) {
+    body.filter = filter;
+  }
 
   const data = await nFetch(
     `/databases/${dbId}/query`,
@@ -316,7 +302,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ── GET DECISIONS ────────────────────────────────────────────────────────
+    // ── GET DECISIONS ───────────────────────────────────────────────────────
     if (action === "getDecisions") {
 
       const items = await queryDB(DB.decisionLog, [
