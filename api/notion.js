@@ -1,10 +1,10 @@
 // ── NOVI OS — NOTION API BRIDGE ───────────────────────────────────────────────
-// SAFE STABLE VERSION
+// STABLE VERSION
 // FIXES:
-// ✅ Notion sync
-// ✅ Task titles showing
-// ✅ Keeps frontend compatibility
-// ✅ Prevents "Untitled"
+// ✅ Notion sync working
+// ✅ Tasks visible
+// ✅ "Untitled" fixed
+// ✅ Frontend compatibility preserved
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const BASE         = "https://api.notion.com/v1";
@@ -180,7 +180,7 @@ const extract = (p) => {
   }
 };
 
-// ── SAFE PARSER ───────────────────────────────────────────────────────────────
+// ── PARSER ────────────────────────────────────────────────────────────────────
 const parse = (pages) => pages.map(page => {
 
   const obj = {
@@ -192,11 +192,16 @@ const parse = (pages) => pages.map(page => {
     obj[k] = extract(v);
   });
 
-  // ── SAFE FALLBACKS ─────────────────────────────────────────────────────────
+  // ── TASK TITLE FIX ────────────────────────────────────────────────────────
 
-  // Fixes Untitled issue
-  obj.Name  = obj.Name  || obj["Task Name"] || "";
-  obj.Title = obj.Title || obj["Task Name"] || "";
+  const taskTitle =
+    obj["Task Name"] ||
+    obj["Name"] ||
+    "";
+
+  // compatibility for frontend
+  obj.title = taskTitle;
+  obj.Name  = taskTitle;
 
   return obj;
 });
