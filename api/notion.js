@@ -1,10 +1,10 @@
-// ── NOVI OS — NOTION API BRIDGE ───────────────────────────────────────────────
-// FIXED VERSION — TASK TITLES + CLEANER PARSING
+// ── NOVI OS — FULLY FIXED NOTION API BRIDGE ──────────────────────────────────
+// VERSION: TASK TITLE FIX + CLEAN RESPONSE FORMAT
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const BASE = "https://api.notion.com/v1";
 
-// ── DATABASE IDs ──────────────────────────────────────────────────────────────
+// ── DATABASE IDS ──────────────────────────────────────────────────────────────
 const DB = {
   departmentUpdates : "74366ef5e20f4bea89c1a6ecce710d17",
   tasks             : "36009180590980098e44f907ba6c249a",
@@ -89,7 +89,7 @@ const nFetch = async (path, method = "GET", body = null) => {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error("NOTION ERROR:", data);
+    console.error("NOTION API ERROR:", data);
     throw new Error(data.message || "Notion API Error");
   }
 
@@ -142,7 +142,7 @@ const prop = {
   }),
 };
 
-// ── PROPERTY EXTRACTION ───────────────────────────────────────────────────────
+// ── PROPERTY EXTRACTOR ────────────────────────────────────────────────────────
 const extract = (p) => {
 
   if (!p) return "";
@@ -175,26 +175,49 @@ const extract = (p) => {
   }
 };
 
-// ── CLEAN PARSER ──────────────────────────────────────────────────────────────
+// ── CLEAN RESPONSE PARSER ─────────────────────────────────────────────────────
 const parse = (pages) => pages.map(page => {
 
-  const obj = {
-    _id  : page.id,
-    _url : page.url
-  };
+  const raw = {};
 
   Object.entries(page.properties || {}).forEach(([k, v]) => {
-    obj[k] = extract(v);
+    raw[k] = extract(v);
   });
 
-  // ── CLEAN FRONTEND KEYS ────────────────────────────────────────────────────
+  // ── VERY IMPORTANT CLEAN OBJECT ────────────────────────────────────────────
 
-  obj.taskName         = obj["Task Name"] || "";
-  obj.decisionTitle    = obj["Decision Title"] || "";
-  obj.overallStatus    = obj["Overall Status"] || "";
-  obj.founderApproval  = obj["Founder Approval"] || "";
+  return {
 
-  return obj;
+    id: page.id,
+    url: page.url,
+
+    // ── TASKS ────────────────────────────────────────────────────────────────
+    taskName: raw["Task Name"] || "",
+    department: raw["Department"] || "",
+    priority: raw["Priority"] || "",
+    status: raw["Status"] || "",
+    owner: raw["Owner"] || "",
+    deadline: raw["Deadline"] || "",
+    dependency: raw["Dependency"] || "",
+    notes: raw["Notes"] || "",
+
+    // ── DEPARTMENT UPDATES ───────────────────────────────────────────────────
+    name: raw["Name"] || "",
+    summary: raw["Summary"] || "",
+    risks: raw["Risks"] || "",
+    nextActions: raw["Next Actions"] || "",
+
+    // ── DECISIONS ────────────────────────────────────────────────────────────
+    decisionTitle: raw["Decision Title"] || "",
+    decisionSummary: raw["Decision Summary"] || "",
+    founderApproval: raw["Founder Approval"] || "",
+    longTermImpact: raw["Long-Term Impact"] || "",
+
+    // ── EOD ──────────────────────────────────────────────────────────────────
+    overallStatus: raw["Overall Status"] || "",
+    majorWins: raw["Major Wins"] || "",
+    keyUpdates: raw["Key Updates"] || "",
+  };
 });
 
 // ── QUERY DATABASE ────────────────────────────────────────────────────────────
@@ -204,13 +227,8 @@ const queryDB = async (dbId, sorts = null, filter = null) => {
     page_size: 100
   };
 
-  if (sorts) {
-    body.sorts = sorts;
-  }
-
-  if (filter) {
-    body.filter = filter;
-  }
+  if (sorts) body.sorts = sorts;
+  if (filter) body.filter = filter;
 
   const data = await nFetch(
     `/databases/${dbId}/query`,
@@ -298,6 +316,38 @@ export default async function handler(req, res) {
       });
     }
 
+    // ── GET DECISIONS ────────────────────────────────────────────────────────
+    if (action === "getDecisions") {
+
+      const items = await queryDB(DB.decisionLog, [
+        {
+          timestamp : "created_time",
+          direction : "descending"
+        }
+      ]);
+
+      return res.json({
+        ok: true,
+        items
+      });
+    }
+
+    // ── GET EOD REPORTS ─────────────────────────────────────────────────────
+    if (action === "getEODReports") {
+
+      const items = await queryDB(DB.eodReports, [
+        {
+          property : "Date",
+          direction: "descending"
+        }
+      ]);
+
+      return res.json({
+        ok: true,
+        items
+      });
+    }
+
     // ── CREATE TASK ─────────────────────────────────────────────────────────
     if (action === "createTask") {
 
@@ -351,7 +401,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
 
-    console.error("Notion API error:", err);
+    console.error("NOTION API ERROR:", err);
 
     return res.status(500).json({
       ok: false,
