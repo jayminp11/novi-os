@@ -71,7 +71,7 @@ const Btn = ({ onClick, disabled, children, variant="primary", small=false }) =>
   };
   return (
     <button onClick={onClick} disabled={disabled}
-      style={{ ...styles[variant], borderRadius:8, padding: small ? "6px 12px" : "9px 18px", fontSize: small ? 12 : 13, fontWeight:600, cursor:disabled?"not-allowed":"pointer", opacity:disabled?.5:1, display:"inline-flex", alignItems:"center", gap:6, transition:"all .15s", fontFamily:"inherit" }}>
+      style={{ ...styles[variant], borderRadius:8, padding: small ? "6px 12px" : "9px 18px", fontSize: small ? 12 : 13, fontWeight:600, cursor:disabled?"not-allowed":"pointer", opacity:disabled? 0.5:1, display:"inline-flex", alignItems:"center", gap:6, transition:"all .15s", fontFamily:"inherit" }}>
       {children}
     </button>
   );
