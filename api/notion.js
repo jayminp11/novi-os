@@ -146,13 +146,13 @@ export default async function handler(req, res) {
       case "createTask": {
         const { taskName, department, priority, status, owner, deadline, dependency, notes } = payload;
         await createPage(DB.tasks, {
-          "Task Name"  : prop.title(taskName),
+          "Task"       : prop.title(taskName),
           "Department" : prop.select(safe(department, OPTS.departments, "HQ")),
           "Priority"   : prop.select(safe(priority, OPTS.priority, "Medium")),
           "Status"     : prop.select(safe(status, OPTS.taskStatus, "Not Started")),
           "Owner"      : prop.text(owner||"Jaymin"),
           "Deadline"   : prop.date(deadline),
-          "Dependency" : prop.text(dependency||""),
+          "Dependencies": prop.text(dependency||""),
           "Notes"      : prop.text(notes||""),
         });
         return res.json({ ok:true, message:"Task created in Notion" });
