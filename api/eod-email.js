@@ -67,7 +67,7 @@ const buildEmail = ({ tasks, deptUpdates, decisions, date, dateStr }) => {
 
   const taskRow = (t) => `
     <tr style="border-bottom:1px solid #1A1A2E">
-      <td style="padding:10px 14px;font-size:12px;color:#E0E0F0">${t["Task Name"]||"Untitled"}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#E0E0F0">${t["Task"]||"Untitled"}</td>
       <td style="padding:10px 14px;font-size:10px;color:#888">${t.Department||"—"}</td>
       <td style="padding:10px 14px">
         <span style="background:${pCol(t.Priority)}18;color:${pCol(t.Priority)};padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:1px">${t.Priority||"—"}</span>
@@ -237,7 +237,7 @@ const buildEmail = ({ tasks, deptUpdates, decisions, date, dateStr }) => {
       <span style="font-size:11px;font-weight:700;color:#00E5AA;letter-spacing:2px">COMPLETED — ${done.length} TASKS</span>
     </div>
     <div style="padding:6px 0">
-      ${done.map(t=>`<div style="padding:8px 20px;font-size:11px;color:#555;border-bottom:1px solid #141420;text-decoration:line-through">${t["Task Name"]||"Untitled"} <span style="color:#444;margin-left:8px">${t.Department||""}</span></div>`).join("")}
+      ${done.map(t=>`<div style="padding:8px 20px;font-size:11px;color:#555;border-bottom:1px solid #141420;text-decoration:line-through">${t["Task"]||"Untitled"} <span style="color:#444;margin-left:8px">${t.Department||""}</span></div>`).join("")}
     </div>
   </div>` : ""}
 
@@ -315,10 +315,10 @@ export default async function handler(req, res) {
           "Overall Status"            : { select: { name: overallStatus } },
           "Major Wins"                : { rich_text:[{ text:{ content:`${done.length} tasks completed today` } }] },
           "Key Updates"               : { rich_text:[{ text:{ content:`${deptUpdates.filter(u=>u.Date===today).length} dept updates synced` } }] },
-          "Critical Blockers"         : { rich_text:[{ text:{ content: blocked.map(t=>t["Task Name"]).join(", ") || "None" } }] },
+          "Critical Blockers"         : { rich_text:[{ text:{ content: blocked.map(t=>t["Task"]).join(", ") || "None" } }] },
           "Founder Decisions Required": { rich_text:[{ text:{ content: pendDec.map(d=>d["Decision Title"]).join(", ") || "None" } }] },
           "Risks Identified"          : { rich_text:[{ text:{ content: deptUpdates.filter(u=>u.Risks).map(u=>`${u.Department}: ${u.Risks}`).join("\n") || "None" } }] },
-          "Tomorrow Priorities"       : { rich_text:[{ text:{ content: urgent.slice(0,3).map(t=>t["Task Name"]).join(", ") || "Review open tasks" } }] },
+          "Tomorrow Priorities"       : { rich_text:[{ text:{ content: urgent.slice(0,3).map(t=>t["Task"]).join(", ") || "Review open tasks" } }] },
         },
       }),
     });
