@@ -190,6 +190,26 @@ export default async function handler(req, res) {
         return res.json({ ok:true, message:"EOD Report saved" });
       }
 
+      case "testEODSave": {
+        // Test saving directly to EOD Reports table with minimal fields
+        const testDate = new Date().toISOString().split("T")[0];
+        const result = await nFetch("/pages", "POST", {
+          parent: { database_id: DB.eodReports },
+          properties: {
+            "Name"           : prop.title("EOD Report — Test " + testDate),
+            "Date"           : prop.date(testDate),
+            "Overall Status" : prop.select("On Track"),
+            "Major Wins"     : prop.text("Test entry from NOVI OS"),
+            "Key Updates"    : prop.text("Testing Notion sync"),
+            "Critical Blockers"          : prop.text("None"),
+            "Founder Decisions Required" : prop.text("None"),
+            "Risks Identified"           : prop.text("None"),
+            "Tomorrow Priorities"        : prop.text("Test completed"),
+          }
+        });
+        return res.json({ ok: !result.object?.includes("error"), result });
+      }
+
       default:
         return res.status(400).json({ ok:false, error:`Unknown action: ${action}` });
     }
