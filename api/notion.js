@@ -175,7 +175,9 @@ export default async function handler(req, res) {
 
       case "saveEODReport": {
         const { date, overallStatus, majorWins, keyUpdates, criticalBlockers, founderDecisionsRequired, risksIdentified, tomorrowPriorities } = payload;
+        const eodTitle = "EOD Report — " + (date || new Date().toLocaleDateString("en-IN"));
         await createPage(DB.eodReports, {
+          "Name"                      : prop.title(eodTitle),
           "Date"                      : prop.date(date),
           "Overall Status"            : prop.select(safe(overallStatus, OPTS.eodStatus, "On Track")),
           "Major Wins"                : prop.text(majorWins||""),
