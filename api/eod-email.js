@@ -86,7 +86,7 @@ const buildEmail = ({ tasks, deptUpdates, decisions, date, dateStr }) => {
       <td style="padding:12px 14px">
         <span style="background:#FFD16618;color:#FFD166;padding:2px 8px;border-radius:4px;font-size:9px">${u.Priority||"—"}</span>
       </td>
-      <td style="padding:12px 14px;font-size:10px;color:${u["Founder Decision Required"]==="Yes"?"#FF8C42":"#555"}">${u["Founder Decision Required"]==="Yes"?"⚠️ Yes":"No"}</td>
+      <td style="padding:12px 14px;font-size:10px;color:${u["Founder Input Required"]==="Yes"?"#FF8C42":"#555"}">${u["Founder Input Required"]==="Yes"?"⚠️ Yes":"No"}</td>
     </tr>`;
 
   const decRow = (d) => `
@@ -315,8 +315,7 @@ export default async function handler(req, res) {
           "Name"                      : { title: [{ text: { content: "EOD Report — " + dateStr } }] },
           "Date"                      : { date: { start: today } },
           "Overall Status"            : { select: { name: overallStatus } },
-          "Major Wins"                : { rich_text:[{ text:{ content: done.length + " tasks completed today" } }] },
-          "Key Updates"               : { rich_text:[{ text:{ content: deptUpdates.filter(u=>u.Date===today).length + " dept updates synced. " + deptUpdates.filter(u=>u.Date===today).map(u=>u.Department).join(", ") } }] },
+          "Key Wins"                  : { rich_text:[{ text:{ content: done.length + " tasks completed today" } }] },
           "Critical Blockers"         : { rich_text:[{ text:{ content: blocked.map(t=>t["Task"]).join(", ") || "None" } }] },
           "Founder Decisions Required": { rich_text:[{ text:{ content: pendDec.map(d=>d["Decision Title"]).join(", ") || "None" } }] },
           "Risks Identified"          : { rich_text:[{ text:{ content: deptUpdates.filter(u=>u.Risks).map(u=>u.Department+": "+u.Risks).join(", ") || "None" } }] },
