@@ -302,6 +302,8 @@ export default function NOVIApp() {
   const [decisions, setDec]  = useState([]);
   const [loading,   setLoad] = useState(true);
   const [notif,     setNotif]= useState(null);
+  const [eodStatus, setEodStatus] = useState(null); // null | 'sending' | 'success' | 'error'
+  const [eodMsg,    setEodMsg]    = useState("");
 
   const toast = (msg,t="ok") => { setNotif({msg,t}); setTimeout(()=>setNotif(null),3500); };
 
@@ -325,7 +327,7 @@ export default function NOVIApp() {
     try {
       const r = await fetch("/api/eod-email?trigger=manual");
       const d = await r.json();
-      if(d.ok) toast("EOD report sent to parekhjaymin11@gmail.com ✓");
+      if(d.ok) toast("EOD report sent to novipetcare@gmail.com ✓");
       else toast(`EOD failed: ${d.error||"Unknown error"}`,"err");
     } catch(e) { toast(`EOD failed: ${e.message}`,"err"); }
   };
@@ -397,8 +399,10 @@ export default function NOVIApp() {
         </div>
         <nav style={{flex:1,padding:"12px 10px",overflowY:"auto"}}><NavItems/></nav>
         <div style={{padding:"12px 14px 20px",borderTop:"1px solid #F3F4F6",display:"flex",flexDirection:"column",gap:8}}>
-          <button onClick={triggerEOD} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",background:"#111827",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-            <Ic n="eod" s={14}/> Send EOD Report
+          <button onClick={triggerEOD} disabled={eodStatus==="sending"}
+            style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",background:eodStatus==="success"?"#059669":eodStatus==="error"?"#EF4444":"#111827",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"background .3s"}}>
+            <Ic n="eod" s={14}/>
+            {eodStatus==="sending"?"Sending...":eodStatus==="success"?"✓ EOD Sent":eodStatus==="error"?"✗ EOD Failed":"Send EOD Report"}
           </button>
           <a href="https://www.notion.so/NOVI-HQ-Dashboard-36009180590980dc98c3f6e2b02a9a15" target="_blank" rel="noreferrer"
             style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px",background:"#F9FAFB",color:"#374151",border:"1px solid #E5E7EB",borderRadius:8,fontSize:13,fontWeight:500,textDecoration:"none"}}>
@@ -433,7 +437,10 @@ export default function NOVIApp() {
             </div>
             <div style={{flex:1,overflowY:"auto",padding:"12px 10px"}}><NavItems/></div>
             <div style={{padding:"16px 14px",borderTop:"1px solid #F3F4F6",flexShrink:0}}>
-              <button onClick={()=>{triggerEOD();setMN(false);}} style={{width:"100%",padding:"10px",background:"#111827",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:8}}>Send EOD Report</button>
+              <button onClick={()=>{triggerEOD();setMN(false);}} disabled={eodStatus==="sending"}
+                style={{width:"100%",padding:"10px",background:eodStatus==="success"?"#059669":eodStatus==="error"?"#EF4444":"#111827",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:8}}>
+                {eodStatus==="sending"?"Sending...":eodStatus==="success"?"✓ EOD Sent":eodStatus==="error"?"✗ EOD Failed":"Send EOD Report"}
+              </button>
               <a href="https://www.notion.so/NOVI-HQ-Dashboard-36009180590980dc98c3f6e2b02a9a15" target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px",background:"#F9FAFB",color:"#374151",border:"1px solid #E5E7EB",borderRadius:8,fontSize:13,fontWeight:500,textDecoration:"none"}}>
                 <Ic n="notion" s={13}/> Open Notion
               </a>
@@ -470,7 +477,7 @@ export default function NOVIApp() {
                 {tab==="sync"      && <SyncView depts={DEPTS} toast={toast} load={load}/>}
                 {tab==="tasks"     && <TasksView tasks={tasks} toast={toast} load={load} isMobile={isMobile}/>}
                 {tab==="decisions" && <DecisionsView decisions={decisions} pendDec={pendDec} toast={toast} load={load}/>}
-                {tab==="eod"       && <EODView triggerEOD={triggerEOD} tasks={tasks} updates={updates} urgent={urgent} open={open}/>}
+                {tab==="eod"       && <EODView triggerEOD={triggerEOD} tasks={tasks} updates={updates} urgent={urgent} open={open} eodStatus={eodStatus} eodMsg={eodMsg}/>}
                 {tab==="depts"     && <DeptsView depts={DEPTS} updates={updates}/>}
               </div>
           }
@@ -988,14 +995,14 @@ function DecisionsView({decisions,pendDec,toast,load}) {
 }
 
 // ── EOD VIEW ──────────────────────────────────────────────────────────────────
-function EODView({triggerEOD,tasks,updates,urgent,open}) {
+function EODView({triggerEOD,tasks,updates,urgent,open,eodStatus,eodMsg}) {
   const today    = new Date().toISOString().split("T")[0];
   const todayUpd = updates.filter(u=>u.Date===today);
 
   return(
     <div style={{maxWidth:680}}>
       <SectionTitle>EOD Reports</SectionTitle>
-      <SectionSub>Auto-sends to parekhjaymin11@gmail.com at 6:00 PM IST · Saved to Notion EOD Reports table</SectionSub>
+      <SectionSub>Auto-sends to novipetcare@gmail.com at 6:00 PM IST · Saved to Notion EOD Reports table</SectionSub>
 
       <Card style={{marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
         <div>
@@ -1003,8 +1010,40 @@ function EODView({triggerEOD,tasks,updates,urgent,open}) {
           <div style={{fontSize:13,color:"#6B7280",marginBottom:2}}>Vercel cron job runs at 12:30 UTC = 6:00 PM IST</div>
           <div style={{fontSize:12,color:"#9CA3AF"}}>Report auto-saved to Notion after each send</div>
         </div>
-        <Btn onClick={triggerEOD} variant="indigo"><Ic n="eod" s={14}/> Send Now</Btn>
+        <Btn onClick={triggerEOD} disabled={eodStatus==="sending"} variant="indigo">
+          <Ic n="eod" s={14}/> {eodStatus==="sending" ? "Sending..." : "Send Now"}
+        </Btn>
       </Card>
+
+      {/* Status Banner */}
+      {eodStatus==="sending" && (
+        <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:10,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:18,height:18,border:"2px solid #3B82F6",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:"#1E40AF"}}>Generating EOD Report...</div>
+            <div style={{fontSize:12,color:"#3B82F6",marginTop:2}}>Pulling data from Notion and sending email</div>
+          </div>
+        </div>
+      )}
+      {eodStatus==="success" && (
+        <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:32,height:32,background:"#059669",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff",fontSize:16}}>✓</div>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"#065F46"}}>EOD Report Sent Successfully</div>
+            <div style={{fontSize:12,color:"#059669",marginTop:2}}>{eodMsg}</div>
+          </div>
+        </div>
+      )}
+      {eodStatus==="error" && (
+        <div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:32,height:32,background:"#EF4444",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff",fontSize:16}}>✗</div>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"#991B1B"}}>Report Not Generated</div>
+            <div style={{fontSize:12,color:"#EF4444",marginTop:2}}>{eodMsg}</div>
+            <div style={{fontSize:11,color:"#9CA3AF",marginTop:4}}>Check: 1) RESEND_API_KEY in Vercel env vars 2) Notion connection 3) Vercel function logs</div>
+          </div>
+        </div>
+      )}
 
       <h3 style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>Today's Preview</h3>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
