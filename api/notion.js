@@ -128,7 +128,7 @@ export default async function handler(req, res) {
       }
 
       case "syncDeptUpdate": {
-        const { department, summary, status, priority, risks, founderDecisionRequired, nextActions } = payload;
+        const { department, summary, status, priority, risks, founderDecisionRequired, impactedDepts } = payload;
         await createPage(DB.departmentUpdates, {
           "Name"                     : prop.title(`${department} — ${new Date().toLocaleDateString("en-IN")}`),
           "Department"               : prop.select(safe(department, OPTS.departments, "HQ")),
@@ -136,8 +136,8 @@ export default async function handler(req, res) {
           "Status"                   : prop.select(safe(status, OPTS.deptStatus, "In Progress")),
           "Priority"                 : prop.select(safe(priority, OPTS.priority, "Medium")),
           "Risks"                    : prop.text(risks||""),
-          "Founder Decision Required": prop.checkbox(founderDecisionRequired||false),
-          "Next Actions"             : prop.text(nextActions||""),
+          "Founder Input Required"   : prop.checkbox(founderDecisionRequired||false),
+          "Impacted Departments"     : prop.text(impactedDepts||""),
           "Date"                     : prop.date(new Date().toISOString().split("T")[0]),
         });
         return res.json({ ok:true, message:`${department} synced to Notion` });
@@ -180,8 +180,7 @@ export default async function handler(req, res) {
           "Name"                      : prop.title(eodTitle),
           "Date"                      : prop.date(date),
           "Overall Status"            : prop.select(safe(overallStatus, OPTS.eodStatus, "On Track")),
-          "Major Wins"                : prop.text(majorWins||""),
-          "Key Updates"               : prop.text(keyUpdates||""),
+          "Key Wins"                  : prop.text(majorWins||""),
           "Critical Blockers"         : prop.text(criticalBlockers||""),
           "Founder Decisions Required": prop.text(founderDecisionsRequired||""),
           "Risks Identified"          : prop.text(risksIdentified||""),
@@ -199,8 +198,7 @@ export default async function handler(req, res) {
             "Name"           : prop.title("EOD Report — Test " + testDate),
             "Date"           : prop.date(testDate),
             "Overall Status" : prop.select("On Track"),
-            "Major Wins"     : prop.text("Test entry from NOVI OS"),
-            "Key Updates"    : prop.text("Testing Notion sync"),
+            "Key Wins"       : prop.text("Test entry from NOVI OS"),
             "Critical Blockers"          : prop.text("None"),
             "Founder Decisions Required" : prop.text("None"),
             "Risks Identified"           : prop.text("None"),
