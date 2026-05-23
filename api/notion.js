@@ -114,10 +114,15 @@ export default async function handler(req, res) {
       }
 
       case "getDecisions": {
-        const items = await queryDB(DB.decisionLog, [
-          { timestamp:"created_time", direction:"descending" }
-        ]);
-        return res.json({ ok:true, items });
+        try {
+          const items = await queryDB(DB.decisionLog, [
+            { timestamp:"created_time", direction:"descending" }
+          ]);
+          return res.json({ ok:true, items });
+        } catch(e) {
+          console.error("Decision Log error:", e.message);
+          return res.json({ ok:true, items:[], warning:"Decision Log not connected — go to Notion → Decision Log table → ··· → Connections → Add NOVI OS" });
+        }
       }
 
       case "getEODReports": {
