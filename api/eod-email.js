@@ -4,7 +4,7 @@
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const RESEND_KEY   = process.env.RESEND_API_KEY;
-const FOUNDER_EMAIL= process.env.GMAIL_USER || "parekhjaymin11@gmail.com";
+const FOUNDER_EMAIL= process.env.FOUNDER_EMAIL || "novipetcare@gmail.com";
 const BASE         = "https://api.notion.com/v1";
 
 const DB = {
@@ -277,20 +277,21 @@ export default async function handler(req, res) {
 
     // Send via Resend
     let emailSent = false;
-    if (RESEND_KEY) {
+    if (!RESEND_KEY) return res.status(500).json({ ok:false, error:"RESEND_API_KEY missing in Vercel env vars" });
+    {
       const r = await fetch("https://api.resend.com/emails", {
         method : "POST",
         headers: { "Authorization":`Bearer ${RESEND_KEY}`, "Content-Type":"application/json" },
         body   : JSON.stringify({
           from   : "NOVI OS <onboarding@resend.dev>",
           to     : [FOUNDER_EMAIL],
-          subject: `📊 NOVI EOD Report — ${dateStr}`,
+          subject: `NOVI EOD Report ${dateStr}`,
           html,
         }),
       });
       const rd = await r.json();
-      emailSent = !!rd.id;
-      console.log("Resend response:", rd);
+      console.log("Resend:", JSON.stringify(rd));
+      if (rd.id) { emailSent = true; } else { return res.status(500).json({ ok:false, error: rd.message || rd.name || JSON.stringify(rd) }); }
     }
 
     // Save report to Notion
@@ -323,7 +324,7 @@ export default async function handler(req, res) {
       }),
     });
 
-    return res.status(200).json({ ok: true, emailSent, stats: { urgent: urgent.length, blocked: blocked.length, done: done.length } });
+    return res.status(200).json({ ok:true, emailSent:true, sentTo:FOUNDER_EMAIL, stats:{ urgent:urgent.length, blocked:blocked.length, done:done.length } });
 
   } catch (err) {
     console.error("EOD error:", err);
