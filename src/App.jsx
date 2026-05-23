@@ -309,14 +309,15 @@ export default function NOVIApp() {
 
   const load = useCallback(async () => {
     setLoad(true);
-    const [t,u,d] = await Promise.all([
+    // Use allSettled so one failure doesn't block others
+    const [t,u,d] = await Promise.allSettled([
       notionApi("getTasks"),
       notionApi("getDeptUpdates"),
       notionApi("getDecisions"),
     ]);
-    if(t.ok) setTasks(t.items||[]);
-    if(u.ok) setUpd(u.items||[]);
-    if(d.ok) setDec(d.items||[]);
+    if(t.status==="fulfilled" && t.value.ok) setTasks(t.value.items||[]);
+    if(u.status==="fulfilled" && u.value.ok) setUpd(u.value.items||[]);
+    if(d.status==="fulfilled" && d.value.ok) setDec(d.value.items||[]);
     setLoad(false);
   },[]);
 
