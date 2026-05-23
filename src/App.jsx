@@ -131,7 +131,7 @@ function TaskModal({task, onClose}) {
               {dept&&<span style={{fontSize:18}}>{dept.icon}</span>}
               <span style={{fontSize:12,fontWeight:600,color:dept?.color||"#6B7280"}}>{task.Department}</span>
             </div>
-            <h2 style={{fontSize:18,fontWeight:700,color:"#111827",lineHeight:1.4}}>{task["Task Name"]||"Untitled"}</h2>
+            <h2 style={{fontSize:18,fontWeight:700,color:"#111827",lineHeight:1.4}}>{task["Task"]||"Untitled"}</h2>
           </div>
           <button onClick={onClose} style={{background:"#F3F4F6",border:"none",borderRadius:8,padding:8,cursor:"pointer",color:"#6B7280",flexShrink:0}}><Ic n="close" s={16}/></button>
         </div>
@@ -156,10 +156,10 @@ function TaskModal({task, onClose}) {
             <div style={{background:"#F9FAFB",borderRadius:8,padding:"12px 14px",fontSize:13,color:"#4B5563",lineHeight:1.65}}>{task.Notes}</div>
           </div>
         )}
-        {task.Dependency&&(
+        {task.Dependencies&&(
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:6}}>Dependencies</div>
-            <div style={{background:"#FEF3C7",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#92400E"}}>⚠️ {task.Dependency}</div>
+            <div style={{background:"#FEF3C7",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#92400E"}}>⚠️ {task.Dependencies}</div>
           </div>
         )}
         {task._url&&(
@@ -498,7 +498,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
       {(urgent.length>0||founderReq.length>0||pendDec.length>0)&&(
         <div style={{background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:10,padding:"14px 18px",marginBottom:20,display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
           <span style={{fontSize:13,fontWeight:600,color:"#92400E"}}>⚠️ Needs attention:</span>
-          {urgent.map(t=><span key={t._id} style={{background:"#FEE2E2",color:"#991B1B",fontSize:12,borderRadius:6,padding:"3px 10px"}}>🚨 {t["Task Name"]}</span>)}
+          {urgent.map(t=><span key={t._id} style={{background:"#FEE2E2",color:"#991B1B",fontSize:12,borderRadius:6,padding:"3px 10px"}}>🚨 {t["Task"]}</span>)}
           {founderReq.slice(0,2).map(u=><span key={u._id} style={{background:"#FEF3C7",color:"#92400E",fontSize:12,borderRadius:6,padding:"3px 10px"}}>📋 {u.Department} needs input</span>)}
           {pendDec.slice(0,2).map(d=><span key={d._id} style={{background:"#EDE9FE",color:"#5B21B6",fontSize:12,borderRadius:6,padding:"3px 10px"}}>⏳ {d["Decision Title"]?.slice(0,25)}</span>)}
         </div>
@@ -535,7 +535,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
             : urgent.slice(0,4).map(t=>(
               <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
                 style={{padding:"10px 8px",borderBottom:"1px solid #F3F4F6",borderRadius:6,transition:"background .15s"}}>
-                <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:4}}>{t["Task Name"]||"Untitled"}</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:4}}>{t["Task"]||"Untitled"}</div>
                 <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                   {DEPTS.find(d=>d.notionName===t.Department)&&<span style={{fontSize:11,color:DEPTS.find(d=>d.notionName===t.Department)?.color,fontWeight:500}}>{DEPTS.find(d=>d.notionName===t.Department)?.icon} {t.Department}</span>}
                   <Badge label={t.Status||"—"} bg={sBg(t.Status)} fg={sFg(t.Status)}/>
@@ -843,7 +843,7 @@ function TasksView({tasks,toast,load}) {
                 <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
                   style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:"14px 18px",marginBottom:8,borderLeft:`4px solid ${pCol(t.Priority)}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,transition:"background .15s"}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:600,color:"#111827",marginBottom:6}}>{t["Task Name"]||"Untitled"}</div>
+                    <div style={{fontSize:14,fontWeight:600,color:"#111827",marginBottom:6}}>{t["Task"]||"Untitled"}</div>
                     <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                       {dept&&<span style={{fontSize:12,color:dept.color,fontWeight:500}}>{dept.icon} {dept.notionName}</span>}
                       {t.Owner&&<span style={{fontSize:12,color:"#9CA3AF"}}>👤 {t.Owner}</span>}
@@ -871,7 +871,7 @@ function TasksView({tasks,toast,load}) {
           </div>
           {tasks.filter(t=>t.Status==="Completed").map(t=>(
             <div key={t._id} style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 18px",marginBottom:6,opacity:.55}}>
-              <span style={{fontSize:13,color:"#6B7280",textDecoration:"line-through"}}>{t["Task Name"]}</span>
+              <span style={{fontSize:13,color:"#6B7280",textDecoration:"line-through"}}>{t["Task"]}</span>
               <span style={{fontSize:12,color:"#9CA3AF",marginLeft:8}}>{t.Department}</span>
             </div>
           ))}
