@@ -1,5 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+// JS-based responsive — no CSS classes needed
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return isMobile;
+}
+
 // ── YOUR 7 CLAUDE PROJECT CHATS ───────────────────────────────────────────────
 const DEPTS = [
   { id:"hq",      name:"NOVI HQ",             notionName:"HQ",             icon:"🏛️", color:"#4F46E5", chatUrl:"https://claude.ai/chat/a7dad3eb-def3-4631-a991-20ff81cfae01" },
@@ -283,6 +294,7 @@ function CommandBar({toast, load}) {
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function NOVIApp() {
+  const isMobile = useIsMobile();
   const [tab,       setTab]  = useState("dashboard");
   const [mobileNav, setMN]   = useState(false);
   const [tasks,     setTasks]= useState([]);
@@ -369,25 +381,11 @@ export default function NOVIApp() {
         .fade{animation:fd .2s ease;}@keyframes fd{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         .notif{animation:si .25s ease;}@keyframes si{from{transform:translateX(110%)}to{transform:translateX(0)}}
         .task-row:hover{background:#F9FAFB!important;cursor:pointer;}
-        @media(max-width:768px){
-          .desktop-sidebar{display:none!important;}
-          .main-content{margin-left:0!important;padding-top:56px!important;}
-          .page-pad{padding:16px!important;}
-          .stat-grid{grid-template-columns:1fr 1fr!important;}
-          .two-col{grid-template-columns:1fr!important;}
-          .form-grid{grid-template-columns:1fr!important;}
-          .page-header{padding:10px 16px!important;}
-          .page-header h1{font-size:14px!important;}
-          .hide-mobile{display:none!important;}
-        }
-        @media(min-width:769px){
-          .mobile-header{display:none!important;}
-          .mobile-overlay{display:none!important;}
-        }
+/* Responsive handled via JS useIsMobile hook */
       `}</style>
 
       {/* DESKTOP SIDEBAR */}
-      <aside className="desktop-sidebar" style={{position:"fixed",top:0,left:0,width:240,height:"100vh",background:"#fff",borderRight:"1px solid #E5E7EB",display:"flex",flexDirection:"column",zIndex:100,overflowY:"auto"}}>
+      <aside style={{position:"fixed",top:0,left:0,width:240,height:"100vh",background:"#fff",borderRight:"1px solid #E5E7EB",display:isMobile?"none":"flex",flexDirection:"column",zIndex:100,overflowY:"auto"}}>
         <div style={{padding:"22px 18px 14px",borderBottom:"1px solid #F3F4F6"}}>
           <div style={{fontSize:22,fontWeight:800,color:"#111827",letterSpacing:-0.5}}>NOVI OS</div>
           <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>Founder Command Centre</div>
@@ -411,7 +409,7 @@ export default function NOVIApp() {
       </aside>
 
       {/* MOBILE HEADER */}
-      <header className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,height:56,background:"#fff",borderBottom:"1px solid #E5E7EB",alignItems:"center",padding:"0 16px",zIndex:100,gap:10}}>
+      <header style={{display:isMobile?"flex":"none",position:"fixed",top:0,left:0,right:0,height:56,background:"#fff",borderBottom:"1px solid #E5E7EB",alignItems:"center",padding:"0 16px",zIndex:100,gap:10}}>
         <button onClick={()=>setMN(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#374151",padding:4,flexShrink:0}}><Ic n="menu" s={22}/></button>
         <div style={{flex:1}}>
           <div style={{fontSize:14,fontWeight:800,color:"#111827"}}>NOVI OS</div>
@@ -445,8 +443,8 @@ export default function NOVIApp() {
       )}
 
       {/* MAIN */}
-      <main className="main-content" style={{marginLeft:240,minHeight:"100vh"}}>
-        <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
+      <main style={{marginLeft:isMobile?0:240,paddingTop:isMobile?56:0,minHeight:"100vh"}}>
+        <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",padding:isMobile?"10px 16px":"14px 24px",display:isMobile?"none":"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
           <div>
             <h1 style={{fontSize:15,fontWeight:700,color:"#111827"}}>{nav.find(n=>n.id===tab)?.label}</h1>
             <p style={{fontSize:11,color:"#9CA3AF",marginTop:1}}>{new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
@@ -459,7 +457,7 @@ export default function NOVIApp() {
           </div>
         </div>
 
-        <div className="page-pad" style={{padding:"28px 32px",maxWidth:1100}}>
+        <div style={{padding:isMobile?"16px":"28px 32px",maxWidth:1100}}>
           {loading
             ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:400,gap:12}}>
                 <div style={{width:36,height:36,border:"3px solid #E5E7EB",borderTopColor:"#4F46E5",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
@@ -467,10 +465,10 @@ export default function NOVIApp() {
                 <p style={{color:"#9CA3AF",fontSize:14}}>Loading from Notion...</p>
               </div>
             : <div className="fade">
-                {tab==="dashboard" && <DashView tasks={tasks} updates={updates} decisions={decisions} urgent={urgent} blocked={blocked} open={open} pendDec={pendDec} founderReq={founderReq} setTab={setTab} toast={toast} load={load}/>}
+                {tab==="dashboard" && <DashView tasks={tasks} updates={updates} decisions={decisions} urgent={urgent} blocked={blocked} open={open} pendDec={pendDec} founderReq={founderReq} setTab={setTab} toast={toast} load={load} isMobile={isMobile}/>}
                 {tab==="command"   && <CommandView toast={toast} load={load}/>}
                 {tab==="sync"      && <SyncView depts={DEPTS} toast={toast} load={load}/>}
-                {tab==="tasks"     && <TasksView tasks={tasks} toast={toast} load={load}/>}
+                {tab==="tasks"     && <TasksView tasks={tasks} toast={toast} load={load} isMobile={isMobile}/>}
                 {tab==="decisions" && <DecisionsView decisions={decisions} pendDec={pendDec} toast={toast} load={load}/>}
                 {tab==="eod"       && <EODView triggerEOD={triggerEOD} tasks={tasks} updates={updates} urgent={urgent} open={open}/>}
                 {tab==="depts"     && <DeptsView depts={DEPTS} updates={updates}/>}
@@ -485,7 +483,7 @@ export default function NOVIApp() {
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderReq,setTab,toast,load}) {
+function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderReq,setTab,toast,load,isMobile=false}) {
   const today    = new Date().toISOString().split("T")[0];
   const todayUpd = updates.filter(u=>u.Date===today);
   const hr       = new Date().getHours();
@@ -515,7 +513,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
       )}
 
       {/* Stats */}
-      <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:isMobile?10:14,marginBottom:20}}>
         {[
           {l:"Critical Tasks",  v:urgent.length,  sub:"Immediate action",   c:"#EF4444",t:"tasks"},
           {l:"Blocked Tasks",   v:blocked.length, sub:"Needs unblocking",   c:"#F97316",t:"tasks"},
@@ -533,7 +531,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
         ))}
       </div>
 
-      <div className="two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:18}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
         {/* Critical tasks — clickable */}
         <Card>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -758,7 +756,7 @@ function SyncView({depts,toast,load}) {
           <Txta value={summary} onChange={e=>setSumm(e.target.value)} rows={6} placeholder="Paste the conversation summary here..."/>
         </Field>
 
-        <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:0}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:0}}>
           <Field label="Status"><Sel value={status} onChange={e=>setStatus(e.target.value)} options={DEPT_STATUS}/></Field>
           <Field label="Priority"><Sel value={priority} onChange={e=>setPri(e.target.value)} options={PRIORITY}/></Field>
         </div>
@@ -785,7 +783,7 @@ function SyncView({depts,toast,load}) {
 }
 
 // ── TASKS VIEW ────────────────────────────────────────────────────────────────
-function TasksView({tasks,toast,load}) {
+function TasksView({tasks,toast,load,isMobile=false}) {
   const [selTask,setSelTask]= useState(null);
   const [form,   setForm]   = useState(null);
   const empty={taskName:"",department:"HQ",priority:"Medium",status:"Not Started",owner:"Jaymin",deadline:"",dependency:"",notes:""};
@@ -820,12 +818,12 @@ function TasksView({tasks,toast,load}) {
         <Card style={{marginBottom:24,borderColor:"#C7D2FE"}}>
           <h3 style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:16}}>Create Task in Notion</h3>
           <Field label="Task Name"><Inp value={form.taskName} onChange={e=>setForm(f=>({...f,taskName:e.target.value}))}/></Field>
-          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:12}}>
             <Field label="Department"><Sel value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value}))} options={DEPTS.map(d=>d.notionName)}/></Field>
             <Field label="Priority"><Sel value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))} options={PRIORITY}/></Field>
             <Field label="Status"><Sel value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} options={TASK_STATUS}/></Field>
           </div>
-          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
             <Field label="Owner"><Inp value={form.owner} onChange={e=>setForm(f=>({...f,owner:e.target.value}))}/></Field>
             <Field label="Deadline"><Inp value={form.deadline} onChange={e=>setForm(f=>({...f,deadline:e.target.value}))} placeholder="YYYY-MM-DD"/></Field>
           </div>
@@ -933,13 +931,13 @@ function DecisionsView({decisions,pendDec,toast,load}) {
         <Card style={{marginBottom:24,borderColor:"#C7D2FE"}}>
           <h3 style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:16}}>Log Decision to Notion</h3>
           <Field label="Decision Title"><Inp value={form.decisionTitle} onChange={e=>setForm(f=>({...f,decisionTitle:e.target.value}))}/></Field>
-          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
             <Field label="Department"><Sel value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value}))} options={DEPTS.map(d=>d.notionName)}/></Field>
             <Field label="Founder Approval"><Sel value={form.founderApproval} onChange={e=>setForm(f=>({...f,founderApproval:e.target.value}))} options={APPROVAL}/></Field>
           </div>
           <Field label="Decision Summary"><Txta value={form.decisionSummary} onChange={e=>setForm(f=>({...f,decisionSummary:e.target.value}))} rows={3}/></Field>
           <Field label="Reasoning"><Txta value={form.reasoning} onChange={e=>setForm(f=>({...f,reasoning:e.target.value}))} rows={2}/></Field>
-          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
             <Field label="Risks"><Inp value={form.risks} onChange={e=>setForm(f=>({...f,risks:e.target.value}))}/></Field>
             <Field label="Long-Term Impact"><Inp value={form.longTermImpact} onChange={e=>setForm(f=>({...f,longTermImpact:e.target.value}))}/></Field>
           </div>
@@ -1009,7 +1007,7 @@ function EODView({triggerEOD,tasks,updates,urgent,open}) {
       </Card>
 
       <h3 style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>Today's Preview</h3>
-      <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
         {[
           {l:"Critical",   v:urgent.length,                              c:"#EF4444",bg:"#FEF2F2"},
           {l:"Open",       v:open.length,                                c:"#3B82F6",bg:"#EFF6FF"},
