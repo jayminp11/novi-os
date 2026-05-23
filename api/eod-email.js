@@ -282,7 +282,7 @@ export default async function handler(req, res) {
         method : "POST",
         headers: { "Authorization":`Bearer ${RESEND_KEY}`, "Content-Type":"application/json" },
         body   : JSON.stringify({
-          from   : "NOVI OS <eod@resend.dev>",
+          from   : "NOVI OS <onboarding@resend.dev>",
           to     : [FOUNDER_EMAIL],
           subject: `📊 NOVI EOD Report — ${dateStr}`,
           html,
