@@ -1,454 +1,198 @@
 // ── NOVI OS — NOTION API BRIDGE ───────────────────────────────────────────────
-// STABLE SAFE VERSION
-// FULL REPLACEMENT FILE
-// FIXES:
-// ✅ Dashboard loading
-// ✅ Tasks visible
-// ✅ Untitled issue fixed
-// ✅ Safer parsing
-// ✅ Frontend compatibility
-// ✅ Stable fallback handling
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const BASE = "[https://api.notion.com/v1](https://api.notion.com/v1)";
+const BASE         = "https://api.notion.com/v1";
 
-// ── DATABASE IDS ──────────────────────────────────────────────────────────────
 const DB = {
-departmentUpdates : "74366ef5e20f4bea89c1a6ecce710d17",
-tasks             : "36009180590980098e44f907ba6c249a",
-eodReports        : "3610918059098072b685c2fc076ae423",
-decisionLog       : "3620918059098002b3abfcc50cfabe5e",
-weeklyReviews     : "3610918059098067b08fd6a4a46bb439",
-todaysPriorities  : "360091805909808fa909ce8831c1bcb8",
-deptUpdatesFeed   : "36009180590980b39ee7c9b76be0e1ad",
+  departmentUpdates : "74366ef5e20f4bea89c1a6ecce710d17",
+  tasks             : "36009180590980098e44f907ba6c249a",
+  eodReports        : "3610918059098072b685c2fc076ae423",
+  decisionLog       : "3620918059098002b3abfcc50cfabe5e",
+  weeklyReviews     : "3610918059098067b08fd6a4a46bb439",
 };
 
-// ── VALID OPTIONS ─────────────────────────────────────────────────────────────
 const OPTS = {
-
-departments : [
-"HQ",
-"Formulations",
-"COO",
-"CFO",
-"CLO",
-"CMO",
-"Market Strategy",
-"Operations",
-"Vendors",
-"Compliance"
-],
-
-priority : [
-"Low",
-"Medium",
-"High",
-"Critical"
-],
-
-deptStatus : [
-"Planned",
-"In Progress",
-"Blocked",
-"Completed",
-"On Hold"
-],
-
-taskStatus : [
-"Not Started",
-"In Progress",
-"Blocked",
-"Completed",
-"Deferred"
-],
-
-eodStatus : [
-"On Track",
-"Delayed",
-"Critical",
-"Blocked"
-],
-
-approval : [
-"Approved",
-"Pending",
-"Rejected",
-"Deferred"
-],
+  departments : ["HQ","Formulations","COO","CFO","CLO","CMO","Market Strategy","Operations","Vendors","Compliance"],
+  priority    : ["Low","Medium","High","Critical"],
+  deptStatus  : ["Planned","In Progress","Blocked","Completed","On Hold"],
+  taskStatus  : ["Not Started","In Progress","Blocked","Completed","Deferred"],
+  eodStatus   : ["On Track","Delayed","Critical","Blocked"],
+  approval    : ["Approved","Pending","Rejected","Deferred"],
 };
 
-// ── SAFE VALIDATOR ────────────────────────────────────────────────────────────
-const safe = (val, allowed, fallback) =>
-allowed.includes(val) ? val : fallback;
+const safe = (val, allowed, fallback) => allowed.includes(val) ? val : fallback;
 
-// ── NOTION FETCH ──────────────────────────────────────────────────────────────
 const nFetch = async (path, method = "GET", body = null) => {
-
-const res = await fetch(`${BASE}${path}`, {
-
-```
-method,
-
-headers: {
-  "Authorization"  : `Bearer ${NOTION_TOKEN}`,
-  "Notion-Version" : "2022-06-28",
-  "Content-Type"   : "application/json",
-},
-
-body: body ? JSON.stringify(body) : undefined,
-```
-
-});
-
-const data = await res.json();
-
-if (!res.ok) {
-
-```
-console.error("NOTION API ERROR:", data);
-
-throw new Error(data.message || "Notion API Error");
-```
-
-}
-
-return data;
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      "Authorization" : `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": "2022-06-28",
+      "Content-Type"  : "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Notion API error");
+  return data;
 };
 
-// ── PROPERTY HELPERS ──────────────────────────────────────────────────────────
 const prop = {
-
-title: (v) => ({
-title: [
-{
-text: {
-content: String(v || "").slice(0, 2000)
-}
-}
-]
-}),
-
-text: (v) => ({
-rich_text: [
-{
-text: {
-content: String(v || "").slice(0, 2000)
-}
-}
-]
-}),
-
-select: (v) => ({
-select: {
-name: String(v || "")
-}
-}),
-
-multiSelect: (v) => ({
-multi_select: (Array.isArray(v) ? v : [v]).map(n => ({
-name: String(n)
-}))
-}),
-
-date: (v) => ({
-date: {
-start: v || new Date().toISOString().split("T")[0]
-}
-}),
-
-checkbox: (v) => ({
-checkbox: Boolean(v)
-}),
+  title      : (v) => ({ title      : [{ text: { content: String(v||"").slice(0,2000) } }] }),
+  text       : (v) => ({ rich_text  : [{ text: { content: String(v||"").slice(0,2000) } }] }),
+  select     : (v) => ({ select     : { name: String(v||"") } }),
+  date       : (v) => ({ date       : { start: v || new Date().toISOString().split("T")[0] } }),
+  checkbox   : (v) => ({ checkbox   : Boolean(v) }),
 };
 
-// ── PROPERTY EXTRACTOR ────────────────────────────────────────────────────────
 const extract = (p) => {
-
-if (!p) return "";
-
-try {
-
-```
-switch (p.type) {
-
-  case "title":
-    return p.title?.map(t => t.plain_text).join("") || "";
-
-  case "rich_text":
-    return p.rich_text?.map(t => t.plain_text).join("") || "";
-
-  case "select":
-    return p.select?.name || "";
-
-  case "multi_select":
-    return p.multi_select?.map(t => t.name).join(", ") || "";
-
-  case "date":
-    return p.date?.start || "";
-
-  case "checkbox":
-    return p.checkbox || false;
-
-  case "status":
-    return p.status?.name || "";
-
-  case "people":
-    return p.people?.map(x => x.name).join(", ") || "";
-
-  case "email":
-    return p.email || "";
-
-  case "phone_number":
-    return p.phone_number || "";
-
-  case "url":
-    return p.url || "";
-
-  case "number":
-    return p.number || 0;
-
-  default:
-    return "";
-}
-```
-
-} catch (err) {
-
-```
-console.error("EXTRACT ERROR:", err);
-
-return "";
-```
-
-}
+  if (!p) return "";
+  switch(p.type) {
+    case "title"       : return p.title?.map(t=>t.plain_text).join("") || "";
+    case "rich_text"   : return p.rich_text?.map(t=>t.plain_text).join("") || "";
+    case "select"      : return p.select?.name || "";
+    case "multi_select": return p.multi_select?.map(t=>t.name).join(", ") || "";
+    case "date"        : return p.date?.start || "";
+    case "checkbox"    : return p.checkbox ? "Yes" : "No";
+    case "status"      : return p.status?.name || "";
+    default            : return "";
+  }
 };
 
-// ── PARSER ────────────────────────────────────────────────────────────────────
 const parse = (pages) => pages.map(page => {
-
-const obj = {
-_id  : page.id,
-_url : page.url
-};
-
-try {
-
-```
-Object.entries(page.properties || {}).forEach(([k, v]) => {
-  obj[k] = extract(v);
+  const obj = { _id: page.id, _url: page.url };
+  Object.entries(page.properties||{}).forEach(([k,v]) => { obj[k] = extract(v); });
+  return obj;
 });
 
-const titleField =
-  obj["Task Name"] ||
-  obj["Decision Title"] ||
-  obj["Summary"] ||
-  obj["Name"] ||
-  obj["Title"] ||
-  "";
-
-obj.title = titleField || "Untitled";
-obj.Name  = titleField || "Untitled";
-```
-
-} catch (err) {
-
-```
-console.error("PARSE ERROR:", err);
-
-obj.title = "Untitled";
-obj.Name  = "Untitled";
-```
-
-}
-
-return obj;
-});
-
-// ── QUERY DATABASE ────────────────────────────────────────────────────────────
-const queryDB = async (dbId, sorts = null, filter = null) => {
-
-try {
-
-```
-const body = {
-  page_size: 100
+const queryDB = async (dbId, sorts=null, filter=null) => {
+  const body = { page_size: 100 };
+  if (sorts)  body.sorts  = sorts;
+  if (filter) body.filter = filter;
+  const data = await nFetch(`/databases/${dbId}/query`, "POST", body);
+  return parse(data.results || []);
 };
 
-if (sorts) {
-  body.sorts = sorts;
-}
-
-if (filter) {
-  body.filter = filter;
-}
-
-const data = await nFetch(
-  `/databases/${dbId}/query`,
-  "POST",
-  body
-);
-
-return parse(data.results || []);
-```
-
-} catch (err) {
-
-```
-console.error("QUERY DB ERROR:", err);
-
-return [];
-```
-
-}
-};
-
-// ── CREATE PAGE ───────────────────────────────────────────────────────────────
 const createPage = async (dbId, properties) => {
-
-return nFetch("/pages", "POST", {
-parent: {
-database_id: dbId
-},
-properties
-});
+  return nFetch("/pages", "POST", { parent: { database_id: dbId }, properties });
 };
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
-const cors = (res) => {
-
-res.setHeader("Access-Control-Allow-Origin", "*");
-
-res.setHeader(
-"Access-Control-Allow-Methods",
-"GET,POST,OPTIONS"
-);
-
-res.setHeader(
-"Access-Control-Allow-Headers",
-"Content-Type"
-);
-};
-
-// ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
+  // CORS
+  res.setHeader("Access-Control-Allow-Origin",  "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-cors(res);
+  // Health check
+  if (req.method === "GET") {
+    return res.json({ ok: true, message: "NOVI Notion API is running", token: NOTION_TOKEN ? "set" : "MISSING" });
+  }
 
-if (req.method === "OPTIONS") {
-return res.status(200).end();
-}
+  if (!NOTION_TOKEN) {
+    return res.status(500).json({ ok: false, error: "NOTION_TOKEN environment variable not set" });
+  }
 
-const { action, payload } = req.body || {};
+  const { action, payload } = req.body || {};
 
-try {
+  try {
+    switch(action) {
 
-```
-// ── GET TASKS ────────────────────────────────────────────────────────────
-if (action === "getTasks") {
+      case "getTasks": {
+        const items = await queryDB(DB.tasks, [
+          { property:"Priority", direction:"descending" },
+          { property:"Status",   direction:"ascending"  },
+        ]);
+        return res.json({ ok:true, items });
+      }
 
-  const items = await queryDB(DB.tasks);
+      case "getDeptUpdates": {
+        const items = await queryDB(DB.departmentUpdates, [
+          { timestamp:"created_time", direction:"descending" }
+        ]);
+        return res.json({ ok:true, items });
+      }
 
-  return res.json({
-    ok: true,
-    items
-  });
-}
+      case "getDecisions": {
+        const items = await queryDB(DB.decisionLog, [
+          { timestamp:"created_time", direction:"descending" }
+        ]);
+        return res.json({ ok:true, items });
+      }
 
-// ── GET DEPARTMENT UPDATES ──────────────────────────────────────────────
-if (action === "getDeptUpdates") {
+      case "getEODReports": {
+        const items = await queryDB(DB.eodReports, [
+          { property:"Date", direction:"descending" }
+        ]);
+        return res.json({ ok:true, items });
+      }
 
-  const items = await queryDB(DB.departmentUpdates);
+      case "syncDeptUpdate": {
+        const { department, summary, status, priority, risks, founderDecisionRequired, nextActions } = payload;
+        await createPage(DB.departmentUpdates, {
+          "Name"                     : prop.title(`${department} — ${new Date().toLocaleDateString("en-IN")}`),
+          "Department"               : prop.select(safe(department, OPTS.departments, "HQ")),
+          "Summary"                  : prop.text(summary),
+          "Status"                   : prop.select(safe(status, OPTS.deptStatus, "In Progress")),
+          "Priority"                 : prop.select(safe(priority, OPTS.priority, "Medium")),
+          "Risks"                    : prop.text(risks||""),
+          "Founder Decision Required": prop.checkbox(founderDecisionRequired||false),
+          "Next Actions"             : prop.text(nextActions||""),
+          "Date"                     : prop.date(new Date().toISOString().split("T")[0]),
+        });
+        return res.json({ ok:true, message:`${department} synced to Notion` });
+      }
 
-  return res.json({
-    ok: true,
-    items
-  });
-}
+      case "createTask": {
+        const { taskName, department, priority, status, owner, deadline, dependency, notes } = payload;
+        await createPage(DB.tasks, {
+          "Task Name"  : prop.title(taskName),
+          "Department" : prop.select(safe(department, OPTS.departments, "HQ")),
+          "Priority"   : prop.select(safe(priority, OPTS.priority, "Medium")),
+          "Status"     : prop.select(safe(status, OPTS.taskStatus, "Not Started")),
+          "Owner"      : prop.text(owner||"Jaymin"),
+          "Deadline"   : prop.date(deadline),
+          "Dependency" : prop.text(dependency||""),
+          "Notes"      : prop.text(notes||""),
+        });
+        return res.json({ ok:true, message:"Task created in Notion" });
+      }
 
-// ── GET DECISIONS ───────────────────────────────────────────────────────
-if (action === "getDecisions") {
+      case "logDecision": {
+        const { decisionTitle, department, decisionSummary, reasoning, risks, founderApproval, longTermImpact } = payload;
+        await createPage(DB.decisionLog, {
+          "Decision Title"  : prop.title(decisionTitle),
+          "Department"      : prop.select(safe(department, OPTS.departments, "HQ")),
+          "Decision Summary": prop.text(decisionSummary||""),
+          "Reasoning"       : prop.text(reasoning||""),
+          "Risks"           : prop.text(risks||""),
+          "Founder Approval": prop.select(safe(founderApproval, OPTS.approval, "Pending")),
+          "Long-Term Impact": prop.text(longTermImpact||""),
+          "Date"            : prop.date(new Date().toISOString().split("T")[0]),
+        });
+        return res.json({ ok:true, message:"Decision logged in Notion" });
+      }
 
-  const items = await queryDB(DB.decisionLog);
+      case "saveEODReport": {
+        const { date, overallStatus, majorWins, keyUpdates, criticalBlockers, founderDecisionsRequired, risksIdentified, tomorrowPriorities } = payload;
+        await createPage(DB.eodReports, {
+          "Date"                      : prop.date(date),
+          "Overall Status"            : prop.select(safe(overallStatus, OPTS.eodStatus, "On Track")),
+          "Major Wins"                : prop.text(majorWins||""),
+          "Key Updates"               : prop.text(keyUpdates||""),
+          "Critical Blockers"         : prop.text(criticalBlockers||""),
+          "Founder Decisions Required": prop.text(founderDecisionsRequired||""),
+          "Risks Identified"          : prop.text(risksIdentified||""),
+          "Tomorrow Priorities"       : prop.text(tomorrowPriorities||""),
+        });
+        return res.json({ ok:true, message:"EOD Report saved" });
+      }
 
-  return res.json({
-    ok: true,
-    items
-  });
-}
-
-// ── GET EOD REPORTS ─────────────────────────────────────────────────────
-if (action === "getEODReports") {
-
-  const items = await queryDB(DB.eodReports);
-
-  return res.json({
-    ok: true,
-    items
-  });
-}
-
-// ── CREATE TASK ─────────────────────────────────────────────────────────
-if (action === "createTask") {
-
-  const {
-    taskName,
-    department,
-    priority,
-    status,
-    owner,
-    deadline,
-    dependency,
-    notes
-  } = payload;
-
-  await createPage(DB.tasks, {
-
-    "Task Name": prop.title(taskName),
-
-    "Department": prop.select(
-      safe(department, OPTS.departments, "HQ")
-    ),
-
-    "Priority": prop.select(
-      safe(priority, OPTS.priority, "Medium")
-    ),
-
-    "Status": prop.select(
-      safe(status, OPTS.taskStatus, "Not Started")
-    ),
-
-    "Owner": prop.text(owner || "Jaymin"),
-
-    "Deadline": prop.date(deadline),
-
-    "Dependency": prop.text(dependency || ""),
-
-    "Notes": prop.text(notes || ""),
-  });
-
-  return res.json({
-    ok: true,
-    message: "Task created successfully"
-  });
-}
-
-// ── UNKNOWN ACTION ──────────────────────────────────────────────────────
-return res.status(400).json({
-  ok: false,
-  error: `Unknown action: ${action}`
-});
-```
-
-} catch (err) {
-
-```
-console.error("MAIN HANDLER ERROR:", err);
-
-return res.status(500).json({
-  ok: false,
-  error: err.message || "Server Error"
-});
-```
-
-}
+      default:
+        return res.status(400).json({ ok:false, error:`Unknown action: ${action}` });
+    }
+  } catch(err) {
+    console.error("Notion API error:", err);
+    return res.status(500).json({ ok:false, error: err.message });
+  }
 }
