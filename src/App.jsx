@@ -376,6 +376,9 @@ export default function NOVIApp() {
           .stat-grid{grid-template-columns:1fr 1fr!important;}
           .two-col{grid-template-columns:1fr!important;}
           .form-grid{grid-template-columns:1fr!important;}
+          .page-header{padding:10px 16px!important;}
+          .page-header h1{font-size:14px!important;}
+          .hide-mobile{display:none!important;}
         }
         @media(min-width:769px){
           .mobile-header{display:none!important;}
@@ -408,27 +411,34 @@ export default function NOVIApp() {
       </aside>
 
       {/* MOBILE HEADER */}
-      <header className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,height:56,background:"#fff",borderBottom:"1px solid #E5E7EB",alignItems:"center",padding:"0 16px",zIndex:100,gap:12}}>
-        <button onClick={()=>setMN(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#374151",padding:4}}><Ic n="menu" s={20}/></button>
-        <div style={{fontSize:16,fontWeight:800,color:"#111827"}}>NOVI OS</div>
-        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-          {urgent.length>0&&<span style={{background:"#FEE2E2",color:"#991B1B",fontSize:11,borderRadius:20,padding:"2px 8px",fontWeight:600}}>{urgent.length}</span>}
-          <button onClick={load} style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:"#6B7280"}}>↻</button>
+      <header className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,height:56,background:"#fff",borderBottom:"1px solid #E5E7EB",alignItems:"center",padding:"0 16px",zIndex:100,gap:10}}>
+        <button onClick={()=>setMN(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#374151",padding:4,flexShrink:0}}><Ic n="menu" s={22}/></button>
+        <div style={{flex:1}}>
+          <div style={{fontSize:14,fontWeight:800,color:"#111827"}}>NOVI OS</div>
+          <div style={{fontSize:10,color:"#9CA3AF"}}>{nav.find(n=>n.id===tab)?.label}</div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {urgent.length>0&&<span style={{background:"#FEE2E2",color:"#991B1B",fontSize:11,borderRadius:20,padding:"2px 7px",fontWeight:700}}>{urgent.length}</span>}
+          {pendDec.length>0&&<span style={{background:"#FEF3C7",color:"#92400E",fontSize:11,borderRadius:20,padding:"2px 7px",fontWeight:700}}>{pendDec.length}</span>}
+          <button onClick={load} style={{background:"#F3F4F6",border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,cursor:"pointer",color:"#6B7280",fontFamily:"inherit"}}>↻</button>
         </div>
       </header>
 
       {/* MOBILE NAV OVERLAY */}
       {mobileNav&&(
-        <div className="mobile-overlay" style={{position:"fixed",inset:0,zIndex:200}}>
+        <div style={{position:"fixed",inset:0,zIndex:200,display:"flex"}}>
           <div onClick={()=>setMN(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.3)"}}/>
-          <div style={{position:"absolute",top:0,left:0,width:280,height:"100vh",background:"#fff",overflowY:"auto",padding:"16px 10px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 14px 16px",borderBottom:"1px solid #F3F4F6",marginBottom:8}}>
+          <div style={{position:"absolute",top:0,left:0,width:"85vw",maxWidth:300,height:"100vh",background:"#fff",overflowY:"auto",display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 14px",borderBottom:"1px solid #F3F4F6",flexShrink:0}}>
               <div style={{fontSize:18,fontWeight:800}}>NOVI OS</div>
               <button onClick={()=>setMN(false)} style={{background:"none",border:"none",cursor:"pointer",color:"#9CA3AF"}}><Ic n="close" s={20}/></button>
             </div>
-            <NavItems/>
-            <div style={{padding:"16px 14px 0",borderTop:"1px solid #F3F4F6",marginTop:8}}>
-              <button onClick={()=>{triggerEOD();setMN(false);}} style={{width:"100%",padding:"10px",background:"#111827",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Send EOD Report</button>
+            <div style={{flex:1,overflowY:"auto",padding:"12px 10px"}}><NavItems/></div>
+            <div style={{padding:"16px 14px",borderTop:"1px solid #F3F4F6",flexShrink:0}}>
+              <button onClick={()=>{triggerEOD();setMN(false);}} style={{width:"100%",padding:"10px",background:"#111827",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:8}}>Send EOD Report</button>
+              <a href="https://www.notion.so/NOVI-HQ-Dashboard-36009180590980dc98c3f6e2b02a9a15" target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px",background:"#F9FAFB",color:"#374151",border:"1px solid #E5E7EB",borderRadius:8,fontSize:13,fontWeight:500,textDecoration:"none"}}>
+                <Ic n="notion" s={13}/> Open Notion
+              </a>
             </div>
           </div>
         </div>
@@ -436,7 +446,7 @@ export default function NOVIApp() {
 
       {/* MAIN */}
       <main className="main-content" style={{marginLeft:240,minHeight:"100vh"}}>
-        <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",padding:"14px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
+        <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
           <div>
             <h1 style={{fontSize:15,fontWeight:700,color:"#111827"}}>{nav.find(n=>n.id===tab)?.label}</h1>
             <p style={{fontSize:11,color:"#9CA3AF",marginTop:1}}>{new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
