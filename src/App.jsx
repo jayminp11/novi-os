@@ -336,7 +336,7 @@ export default function NOVIApp() {
   const blocked   = tasks.filter(t=>t.Status==="Blocked");
   const open      = tasks.filter(t=>t.Status!=="Completed"&&t.Status!=="Deferred");
   const pendDec   = decisions.filter(d=>d["Founder Approval"]==="Pending");
-  const founderReq= updates.filter(u=>u["Founder Decision Required"]==="Yes");
+  const founderReq= updates.filter(u=>u["Founder Input Required"]==="Yes");
 
   const nav = [
     {id:"dashboard", label:"Dashboard",      icon:"dash"},
@@ -578,7 +578,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
                       <span style={{fontSize:14}}>{dept?.icon}</span>
                       <span style={{fontSize:13,fontWeight:600,color:dept?.color||"#374151"}}>{u.Department}</span>
-                      {u["Founder Decision Required"]==="Yes"&&<span style={{fontSize:11,background:"#FEF3C7",color:"#92400E",borderRadius:4,padding:"1px 6px"}}>Input needed</span>}
+                      {u["Founder Input Required"]==="Yes"&&<span style={{fontSize:11,background:"#FEF3C7",color:"#92400E",borderRadius:4,padding:"1px 6px"}}>Input needed</span>}
                     </div>
                     <p style={{fontSize:12,color:"#6B7280",lineHeight:1.5}}>{(u.Summary||"").slice(0,90)}{u.Summary?.length>90?"...":""}</p>
                   </div>
@@ -728,7 +728,7 @@ function SyncView({depts,toast,load}) {
   const handleSync=async()=>{
     if(!summary.trim()) return;
     setSyn(true);
-    const r=await notionApi("syncDeptUpdate",{department:dept,summary,status,priority,risks,founderDecisionRequired:fr,nextActions:nextAct});
+    const r=await notionApi("syncDeptUpdate",{department:dept,summary,status,priority,risks,founderDecisionRequired:fr,impactedDepts:nextAct});
     if(r.ok){toast(`${dept} synced to Notion ✓`);setSumm("");setRisks("");setNA("");setFR(false);load();}
     else toast("Sync failed — check Notion connection","err");
     setSyn(false);
@@ -772,8 +772,8 @@ function SyncView({depts,toast,load}) {
           <Inp value={risks} onChange={e=>setRisks(e.target.value)} placeholder="Any risks from this conversation..."/>
         </Field>
 
-        <Field label="Next Actions">
-          <Inp value={nextAct} onChange={e=>setNA(e.target.value)} placeholder="Action items..."/>
+        <Field label="Impacted Departments">
+          <Inp value={nextAct} onChange={e=>setNA(e.target.value)} placeholder="Which departments are impacted? e.g. CFO, CMO"/>
         </Field>
 
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,padding:"12px 14px",background:"#FFFBEB",borderRadius:8,border:"1px solid #FCD34D"}}>
@@ -1090,7 +1090,7 @@ function DeptsView({depts,updates}) {
         {depts.map(d=>{
           const deptUpd    = updates.filter(u=>u.Department===d.notionName);
           const latest     = deptUpd[0];
-          const needsInput = deptUpd.some(u=>u["Founder Decision Required"]==="Yes");
+          const needsInput = deptUpd.some(u=>u["Founder Input Required"]==="Yes");
           return(
             <a key={d.id} href={d.chatUrl||"https://claude.ai"} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>
               <div style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:12,padding:"20px 18px",cursor:"pointer",transition:"all .15s",height:"100%",borderTop:`4px solid ${d.color}`}}
