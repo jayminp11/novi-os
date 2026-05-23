@@ -306,23 +306,26 @@ export default async function handler(req, res) {
     const pendDec = decisions.filter(d => d["Founder Approval"]==="Pending");
     const overallStatus = blocked.length>0?"Blocked":urgent.length>3?"Critical":urgent.length>0?"Delayed":"On Track";
 
-    await fetch(`${BASE}/pages`, {
+    const notionSaveRes = await fetch(`${BASE}/pages`, {
       method : "POST",
       headers: nHeaders2,
       body   : JSON.stringify({
         parent: { database_id: DB.eodReports },
         properties: {
+          "Name"                      : { title: [{ text: { content: "EOD Report — " + dateStr } }] },
           "Date"                      : { date: { start: today } },
           "Overall Status"            : { select: { name: overallStatus } },
-          "Major Wins"                : { rich_text:[{ text:{ content:`${done.length} tasks completed today` } }] },
-          "Key Updates"               : { rich_text:[{ text:{ content:`${deptUpdates.filter(u=>u.Date===today).length} dept updates synced` } }] },
+          "Major Wins"                : { rich_text:[{ text:{ content: done.length + " tasks completed today" } }] },
+          "Key Updates"               : { rich_text:[{ text:{ content: deptUpdates.filter(u=>u.Date===today).length + " dept updates synced. " + deptUpdates.filter(u=>u.Date===today).map(u=>u.Department).join(", ") } }] },
           "Critical Blockers"         : { rich_text:[{ text:{ content: blocked.map(t=>t["Task"]).join(", ") || "None" } }] },
           "Founder Decisions Required": { rich_text:[{ text:{ content: pendDec.map(d=>d["Decision Title"]).join(", ") || "None" } }] },
-          "Risks Identified"          : { rich_text:[{ text:{ content: deptUpdates.filter(u=>u.Risks).map(u=>`${u.Department}: ${u.Risks}`).join("\n") || "None" } }] },
+          "Risks Identified"          : { rich_text:[{ text:{ content: deptUpdates.filter(u=>u.Risks).map(u=>u.Department+": "+u.Risks).join(", ") || "None" } }] },
           "Tomorrow Priorities"       : { rich_text:[{ text:{ content: urgent.slice(0,3).map(t=>t["Task"]).join(", ") || "Review open tasks" } }] },
         },
       }),
     });
+    const notionSaveData = await notionSaveRes.json();
+    console.log("Notion EOD save:", notionSaveData.id ? "SUCCESS" : JSON.stringify(notionSaveData));
 
     return res.status(200).json({ ok:true, emailSent:true, sentTo:FOUNDER_EMAIL, stats:{ urgent:urgent.length, blocked:blocked.length, done:done.length } });
 
