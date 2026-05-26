@@ -337,6 +337,8 @@ export default function NOVIApp() {
   const blocked   = tasks.filter(t=>t.Status==="Blocked");
   const open      = tasks.filter(t=>t.Status!=="Completed"&&t.Status!=="Deferred");
   const pendDec   = decisions.filter(d=>d["Founder Approval"]==="Pending");
+  const pendTaskApprovals = tasks.filter(t=>t["Founder Approval Required"]==="Yes"&&t.Status!=="Completed");
+  const totalPendingApprovals = pendDec.length + pendTaskApprovals.length;
   const founderReq= updates.filter(u=>u["Founder Input Required"]==="Yes");
 
   const nav = [
@@ -344,7 +346,7 @@ export default function NOVIApp() {
     {id:"command",   label:"Quick Command",  icon:"chat",  badge:0},
     {id:"sync",      label:"Sync from Chat", icon:"sync",  badge:0},
     {id:"tasks",     label:"Tasks",          icon:"task",  badge:open.length},
-    {id:"decisions", label:"Decisions",      icon:"decide",badge:pendDec.length},
+    {id:"decisions", label:"Decisions",      icon:"decide",badge:totalPendingApprovals},
     {id:"eod",       label:"EOD Reports",    icon:"eod"},
     {id:"depts",     label:"Departments",    icon:"dept"},
   ];
@@ -473,11 +475,11 @@ export default function NOVIApp() {
                 <p style={{color:"#9CA3AF",fontSize:14}}>Loading from Notion...</p>
               </div>
             : <div className="fade">
-                {tab==="dashboard" && <DashView tasks={tasks} updates={updates} decisions={decisions} urgent={urgent} blocked={blocked} open={open} pendDec={pendDec} founderReq={founderReq} setTab={setTab} toast={toast} load={load} isMobile={isMobile}/>}
+                {tab==="dashboard" && <DashView tasks={tasks} updates={updates} decisions={decisions} urgent={urgent} blocked={blocked} open={open} pendDec={pendDec} pendTaskApprovals={pendTaskApprovals} totalPendingApprovals={totalPendingApprovals} founderReq={founderReq} setTab={setTab} toast={toast} load={load} isMobile={isMobile}/>}
                 {tab==="command"   && <CommandView toast={toast} load={load}/>}
                 {tab==="sync"      && <SyncView depts={DEPTS} toast={toast} load={load}/>}
                 {tab==="tasks"     && <TasksView tasks={tasks} toast={toast} load={load} isMobile={isMobile}/>}
-                {tab==="decisions" && <DecisionsView decisions={decisions} pendDec={pendDec} toast={toast} load={load}/>}
+                {tab==="decisions" && <DecisionsView decisions={decisions} pendDec={pendDec} pendTaskApprovals={pendTaskApprovals} toast={toast} load={load}/>}
                 {tab==="eod"       && <EODView triggerEOD={triggerEOD} tasks={tasks} updates={updates} urgent={urgent} open={open} eodStatus={eodStatus} eodMsg={eodMsg}/>}
                 {tab==="depts"     && <DeptsView depts={DEPTS} updates={updates}/>}
               </div>
@@ -491,7 +493,7 @@ export default function NOVIApp() {
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderReq,setTab,toast,load,isMobile=false}) {
+function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,pendTaskApprovals=[],totalPendingApprovals=0,founderReq,setTab,toast,load,isMobile=false}) {
   const today    = new Date().toISOString().split("T")[0];
   const todayUpd = updates.filter(u=>u.Date===today);
   const hr       = new Date().getHours();
@@ -526,7 +528,7 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
           {l:"Critical Tasks",  v:urgent.length,  sub:"Immediate action",   c:"#EF4444",t:"tasks"},
           {l:"Blocked Tasks",   v:blocked.length, sub:"Needs unblocking",   c:"#F97316",t:"tasks"},
           {l:"Open Tasks",      v:open.length,    sub:"Across departments", c:"#3B82F6",t:"tasks"},
-          {l:"Pending Decisions",v:pendDec.length,sub:"Awaiting approval",  c:"#8B5CF6",t:"decisions"},
+          {l:"Pending Approvals",v:totalPendingApprovals,sub:"Decisions + Tasks needing approval",c:"#8B5CF6",t:"decisions"},
         ].map(s=>(
           <div key={s.l} onClick={()=>setTab(s.t)}
             style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:12,padding:"18px 20px",cursor:"pointer",transition:"all .15s",borderLeft:`4px solid ${s.c}`}}
@@ -588,13 +590,30 @@ function DashView({tasks,updates,decisions,urgent,blocked,open,pendDec,founderRe
         </Card>
       </div>
 
-      {/* Pending decisions */}
-      {pendDec.length>0&&(
+      {/* Pending approvals — decisions + tasks */}
+      {(pendDec.length>0||pendTaskApprovals.length>0)&&(
         <Card>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <h3 style={{fontSize:14,fontWeight:700,color:"#111827"}}>📋 Decisions Awaiting Approval</h3>
+            <h3 style={{fontSize:14,fontWeight:700,color:"#111827"}}>⚠️ Awaiting Your Approval ({pendDec.length+pendTaskApprovals.length})</h3>
             <button onClick={()=>setTab("decisions")} style={{fontSize:12,color:"#4F46E5",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>View all →</button>
           </div>
+          {/* Task approvals */}
+          {pendTaskApprovals.slice(0,3).map(t=>{
+            const dept=DEPTS.find(d=>d.notionName===t.Department);
+            return(
+              <div key={t._id} style={{padding:"10px 0",borderBottom:"1px solid #F3F4F6",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,color:"#6B7280",marginBottom:2}}>📋 Task</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{t["Task"]||"Untitled"}</div>
+                  <div style={{display:"flex",gap:8,marginTop:3}}>
+                    {dept&&<span style={{fontSize:11,color:dept.color}}>{dept.icon} {dept.name}</span>}
+                    <span style={{fontSize:11,color:"#9CA3AF"}}>{t.Priority}</span>
+                  </div>
+                </div>
+                <Badge label="Approval Needed" bg="#FEE2E2" fg="#991B1B"/>
+              </div>
+            );
+          })}
           {pendDec.slice(0,3).map(d=>{
             const dept=DEPTS.find(x=>x.notionName===d.Department);
             return(
@@ -792,38 +811,325 @@ function SyncView({depts,toast,load}) {
 
 // ── TASKS VIEW ────────────────────────────────────────────────────────────────
 function TasksView({tasks,toast,load,isMobile=false}) {
-  const [selTask,setSelTask]= useState(null);
-  const [form,   setForm]   = useState(null);
-  const empty={taskName:"",department:"HQ",priority:"Medium",status:"Not Started",owner:"Jaymin",deadline:"",dependency:"",notes:""};
+  const [selTask,  setSelTask] = useState(null);
+  const [form,     setForm]    = useState(null);
+  const [viewMode, setVM]      = useState("priority"); // "priority" | "date" | "calendar"
+  const empty = {taskName:"",department:"HQ",priority:"Medium",status:"Not Started",owner:"Jaymin",deadline:"",dependency:"",notes:""};
 
-  const create=async()=>{
+  const create = async () => {
     if(!form.taskName.trim()) return;
-    const r=await notionApi("createTask",form);
+    const r = await notionApi("createTask", form);
     if(r.ok){toast("Task created in Notion ✓");setForm(null);load();}
     else toast("Failed to create task","err");
   };
 
-  const sections=[
-    {key:"Critical",label:"Critical",    color:"#EF4444"},
-    {key:"High",    label:"High",        color:"#F97316"},
-    {key:"Medium",  label:"Medium",      color:"#F59E0B"},
-    {key:"Low",     label:"Low",         color:"#9CA3AF"},
-  ];
+  const openTasks = tasks.filter(t=>t.Status!=="Completed"&&t.Status!=="Deferred");
+
+  // ── DATE VIEW: group by deadline ──────────────────────────────────────────
+  const getDateGroups = () => {
+    const today    = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+    const nextWeek = new Date(today); nextWeek.setDate(today.getDate()+7);
+
+    const groups = { overdue:[], today:[], tomorrow:[], thisWeek:[], later:[], noDate:[] };
+    openTasks.forEach(t => {
+      if(!t.Deadline){ groups.noDate.push(t); return; }
+      const d = new Date(t.Deadline); d.setHours(0,0,0,0);
+      if(d < today)        groups.overdue.push(t);
+      else if(d.getTime()===today.getTime())    groups.today.push(t);
+      else if(d.getTime()===tomorrow.getTime()) groups.tomorrow.push(t);
+      else if(d <= nextWeek) groups.thisWeek.push(t);
+      else groups.later.push(t);
+    });
+    return groups;
+  };
+
+  // ── CALENDAR VIEW: mini month calendar ───────────────────────────────────
+  const CalendarView = () => {
+    const [calDate, setCalDate] = useState(new Date());
+    const [selDay,  setSelDay]  = useState(null);
+
+    const year  = calDate.getFullYear();
+    const month = calDate.getMonth();
+    const firstDay  = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const days   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+    // Map tasks to dates
+    const tasksByDate = {};
+    openTasks.forEach(t => {
+      if(t.Deadline) {
+        const key = t.Deadline.slice(0,10);
+        if(!tasksByDate[key]) tasksByDate[key] = [];
+        tasksByDate[key].push(t);
+      }
+    });
+
+    const selKey   = selDay ? `${year}-${String(month+1).padStart(2,"0")}-${String(selDay).padStart(2,"0")}` : null;
+    const selTasks = selKey ? (tasksByDate[selKey]||[]) : [];
+
+    const cells = [];
+    for(let i=0;i<firstDay;i++) cells.push(null);
+    for(let d=1;d<=daysInMonth;d++) cells.push(d);
+
+    return (
+      <div>
+        <Card style={{marginBottom:16}}>
+          {/* Month nav */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <button onClick={()=>setCalDate(new Date(year,month-1,1))} style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:16}}>‹</button>
+            <span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{months[month]} {year}</span>
+            <button onClick={()=>setCalDate(new Date(year,month+1,1))} style={{background:"none",border:"1px solid #E5E7EB",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:16}}>›</button>
+          </div>
+
+          {/* Day headers */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+            {days.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:"#9CA3AF",padding:"4px 0"}}>{d}</div>)}
+          </div>
+
+          {/* Calendar grid */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+            {cells.map((day,i) => {
+              if(!day) return <div key={i}/>;
+              const key = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+              const dayTasks = tasksByDate[key]||[];
+              const d = new Date(year,month,day); d.setHours(0,0,0,0);
+              const isToday    = d.getTime()===today.getTime();
+              const isOverdue  = d < today && dayTasks.length>0;
+              const isSelected = selDay===day;
+              const hasCritical= dayTasks.some(t=>t.Priority==="Critical");
+
+              return (
+                <div key={i} onClick={()=>setSelDay(selDay===day?null:day)}
+                  style={{
+                    minHeight:42, padding:"4px 2px", borderRadius:6, cursor:dayTasks.length?"pointer":"default",
+                    background: isSelected?"#EEF2FF":isToday?"#F0FDF4":"transparent",
+                    border: isSelected?"1px solid #4F46E5":isToday?"1px solid #86EFAC":"1px solid transparent",
+                    transition:"all .15s"
+                  }}>
+                  <div style={{textAlign:"center",fontSize:12,fontWeight:isToday?700:400,color:isToday?"#059669":isOverdue?"#EF4444":"#374151",marginBottom:2}}>{day}</div>
+                  {dayTasks.length>0&&(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:2,justifyContent:"center"}}>
+                      {dayTasks.slice(0,3).map((_,ti)=>(
+                        <div key={ti} style={{width:6,height:6,borderRadius:"50%",background:hasCritical?"#EF4444":"#4F46E5"}}/>
+                      ))}
+                      {dayTasks.length>3&&<div style={{fontSize:8,color:"#9CA3AF"}}>+{dayTasks.length-3}</div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Legend */}
+          <div style={{display:"flex",gap:16,marginTop:12,padding:"10px 0",borderTop:"1px solid #F3F4F6",flexWrap:"wrap"}}>
+            {[{c:"#059669",l:"Today"},{c:"#EF4444",l:"Critical task"},{c:"#4F46E5",l:"Task due"},{c:"#EEF2FF",l:"Selected"}].map(x=>(
+              <div key={x.l} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#6B7280"}}>
+                <div style={{width:10,height:10,borderRadius:"50%",background:x.c}}/>
+                {x.l}
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Selected day tasks */}
+        {selDay&&(
+          <Card style={{marginBottom:16,borderColor:"#C7D2FE"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#4F46E5",marginBottom:12}}>
+              📅 {months[month]} {selDay}, {year}
+              <span style={{fontSize:12,fontWeight:400,color:"#6B7280",marginLeft:8}}>{selTasks.length} task{selTasks.length!==1?"s":""}</span>
+            </div>
+            {selTasks.length===0
+              ? <div style={{fontSize:13,color:"#9CA3AF",textAlign:"center",padding:"12px 0"}}>No tasks due on this day</div>
+              : selTasks.map(t=>{
+                  const dept=DEPTS.find(d=>d.notionName===t.Department);
+                  return(
+                    <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
+                      style={{padding:"10px 0",borderBottom:"1px solid #F3F4F6",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:3}}>{t["Task"]||"Untitled"}</div>
+                        <div style={{display:"flex",gap:6}}>
+                          {dept&&<span style={{fontSize:11,color:dept.color}}>{dept.icon} {dept.name}</span>}
+                          <Badge label={t.Priority||"—"} bg={t.Priority==="Critical"?"#FEE2E2":t.Priority==="High"?"#FFEDD5":"#FEF3C7"} fg={pCol(t.Priority)}/>
+                        </div>
+                      </div>
+                      <Badge label={t.Status||"—"} bg={sBg(t.Status)} fg={sFg(t.Status)}/>
+                    </div>
+                  );
+                })
+            }
+          </Card>
+        )}
+
+        {/* Summary */}
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:"#374151",marginBottom:12}}>All Open Tasks ({openTasks.length})</div>
+          {openTasks.length===0
+            ? <div style={{textAlign:"center",padding:"20px 0",color:"#9CA3AF",fontSize:13}}>No open tasks 🎉</div>
+            : openTasks.sort((a,b)=>(a.Deadline||"9999")>(b.Deadline||"9999")?1:-1).map(t=>{
+                const dept=DEPTS.find(d=>d.notionName===t.Department);
+                return(
+                  <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
+                    style={{padding:"9px 0",borderBottom:"1px solid #F3F4F6",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:500,color:"#111827"}}>{t["Task"]||"Untitled"}</div>
+                      <div style={{display:"flex",gap:6,marginTop:3}}>
+                        {dept&&<span style={{fontSize:10,color:dept.color}}>{dept.icon} {dept.name}</span>}
+                        {t.Deadline&&<span style={{fontSize:10,color:"#9CA3AF"}}>📅 {t.Deadline}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:5,flexShrink:0}}>
+                      <Badge label={t.Priority||"—"} bg={t.Priority==="Critical"?"#FEE2E2":t.Priority==="High"?"#FFEDD5":"#FEF3C7"} fg={pCol(t.Priority)}/>
+                      <Badge label={t.Status||"—"} bg={sBg(t.Status)} fg={sFg(t.Status)}/>
+                    </div>
+                  </div>
+                );
+              })
+          }
+        </Card>
+      </div>
+    );
+  };
+
+  // ── DATE GROUP VIEW ───────────────────────────────────────────────────────
+  const DateGroupView = () => {
+    const groups = getDateGroups();
+    const sections = [
+      {key:"overdue",   label:"⚠️ Overdue",    color:"#EF4444", bg:"#FEF2F2"},
+      {key:"today",     label:"📌 Due Today",   color:"#F97316", bg:"#FFF7ED"},
+      {key:"tomorrow",  label:"📅 Tomorrow",    color:"#F59E0B", bg:"#FFFBEB"},
+      {key:"thisWeek",  label:"📆 This Week",   color:"#3B82F6", bg:"#EFF6FF"},
+      {key:"later",     label:"🗓️ Later",        color:"#8B5CF6", bg:"#F5F3FF"},
+      {key:"noDate",    label:"📋 No Due Date", color:"#9CA3AF", bg:"#F9FAFB"},
+    ];
+    return (
+      <div>
+        {sections.map(sec=>{
+          const items = groups[sec.key];
+          if(!items?.length) return null;
+          return(
+            <div key={sec.key} style={{marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 12px",background:sec.bg,borderRadius:8,border:`1px solid ${sec.color}20`}}>
+                <span style={{fontSize:13,fontWeight:700,color:sec.color}}>{sec.label}</span>
+                <span style={{fontSize:12,color:sec.color,opacity:.7}}>({items.length})</span>
+              </div>
+              {items.map(t=>{
+                const dept=DEPTS.find(d=>d.notionName===t.Department);
+                return(
+                  <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
+                    style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 16px",marginBottom:7,borderLeft:`4px solid ${pCol(t.Priority)}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:5}}>{t["Task"]||"Untitled"}</div>
+                      <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                        {dept&&<span style={{fontSize:11,color:dept.color,fontWeight:500}}>{dept.icon} {dept.name}</span>}
+                        {t.Owner&&<span style={{fontSize:11,color:"#9CA3AF"}}>👤 {t.Owner}</span>}
+                        {t.Deadline&&<span style={{fontSize:11,color:sec.key==="overdue"?"#EF4444":"#9CA3AF",fontWeight:sec.key==="overdue"?600:400}}>📅 {t.Deadline}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
+                      <Badge label={t.Status||"—"} bg={sBg(t.Status)} fg={sFg(t.Status)}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── PRIORITY VIEW (original) ───────────────────────────────────────────────
+  const PriorityView = () => {
+    const sections=[
+      {key:"Critical",label:"Critical",color:"#EF4444"},
+      {key:"High",    label:"High",    color:"#F97316"},
+      {key:"Medium",  label:"Medium",  color:"#F59E0B"},
+      {key:"Low",     label:"Low",     color:"#9CA3AF"},
+    ];
+    return(
+      <div>
+        {sections.map(sec=>{
+          const items=tasks.filter(t=>t.Priority===sec.key&&t.Status!=="Completed");
+          if(!items.length) return null;
+          return(
+            <div key={sec.key} style={{marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <span style={{width:10,height:10,borderRadius:"50%",background:sec.color,display:"inline-block"}}/>
+                <span style={{fontSize:13,fontWeight:700,color:"#374151"}}>{sec.label}</span>
+                <span style={{fontSize:12,color:"#9CA3AF"}}>({items.length})</span>
+              </div>
+              {items.map(t=>{
+                const dept=DEPTS.find(d=>d.notionName===t.Department);
+                return(
+                  <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
+                    style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:"14px 18px",marginBottom:8,borderLeft:`4px solid ${pCol(t.Priority)}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,transition:"background .15s"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14,fontWeight:600,color:"#111827",marginBottom:6}}>{t["Task"]||"Untitled"}</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                        {dept&&<span style={{fontSize:12,color:dept.color,fontWeight:500}}>{dept.icon} {dept.name}</span>}
+                        {t.Owner&&<span style={{fontSize:12,color:"#9CA3AF"}}>👤 {t.Owner}</span>}
+                        {t.Deadline&&<span style={{fontSize:12,color:"#9CA3AF"}}>📅 {t.Deadline}</span>}
+                        {t.Notes&&<span style={{fontSize:12,color:"#9CA3AF"}}>· {t.Notes.slice(0,50)}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                      <Badge label={t.Status||"—"} bg={sBg(t.Status)} fg={sFg(t.Status)}/>
+                      <span style={{fontSize:11,color:"#9CA3AF"}}>click for details</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        {tasks.filter(t=>t.Status==="Completed").length>0&&(
+          <div style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <span style={{width:10,height:10,borderRadius:"50%",background:"#10B981",display:"inline-block"}}/>
+              <span style={{fontSize:13,fontWeight:700,color:"#374151"}}>Completed</span>
+              <span style={{fontSize:12,color:"#9CA3AF"}}>({tasks.filter(t=>t.Status==="Completed").length})</span>
+            </div>
+            {tasks.filter(t=>t.Status==="Completed").map(t=>(
+              <div key={t._id} style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 18px",marginBottom:6,opacity:.55}}>
+                <span style={{fontSize:13,color:"#6B7280",textDecoration:"line-through"}}>{t["Task"]}</span>
+                <span style={{fontSize:12,color:"#9CA3AF",marginLeft:8}}>{t.Department}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return(
     <div>
       {selTask&&<TaskModal task={selTask} onClose={()=>setSelTask(null)}/>}
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:12}}>
         <div>
           <SectionTitle>Task Board</SectionTitle>
-          <SectionSub>{tasks.filter(t=>t.Status!=="Completed"&&t.Status!=="Deferred").length} open · {tasks.length} total · Click any task to view details</SectionSub>
+          <SectionSub>{openTasks.length} open · {tasks.length} total · Click any task to view details</SectionSub>
         </div>
-        <Btn onClick={()=>setForm({...empty})}><Ic n="plus" s={14}/> New Task</Btn>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {/* View toggle */}
+          <div style={{display:"flex",background:"#F3F4F6",borderRadius:8,padding:3,gap:2}}>
+            {[{v:"priority",l:"Priority"},{v:"date",l:"By Date"},{v:"calendar",l:"📅 Calendar"}].map(btn=>(
+              <button key={btn.v} onClick={()=>setVM(btn.v)}
+                style={{padding:"6px 12px",borderRadius:6,border:"none",background:viewMode===btn.v?"#fff":"transparent",color:viewMode===btn.v?"#111827":"#6B7280",fontSize:12,fontWeight:viewMode===btn.v?600:400,cursor:"pointer",fontFamily:"inherit",boxShadow:viewMode===btn.v?"0 1px 3px rgba(0,0,0,0.1)":"none",transition:"all .15s"}}>
+                {btn.l}
+              </button>
+            ))}
+          </div>
+          <Btn onClick={()=>setForm({...empty})}><Ic n="plus" s={14}/> New Task</Btn>
+        </div>
       </div>
 
       {form&&(
-        <Card style={{marginBottom:24,borderColor:"#C7D2FE"}}>
+        <Card style={{marginBottom:20,borderColor:"#C7D2FE"}}>
           <h3 style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:16}}>Create Task in Notion</h3>
           <Field label="Task Name"><Inp value={form.taskName} onChange={e=>setForm(f=>({...f,taskName:e.target.value}))}/></Field>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:12}}>
@@ -843,69 +1149,22 @@ function TasksView({tasks,toast,load,isMobile=false}) {
         </Card>
       )}
 
-      {sections.map(sec=>{
-        const items=tasks.filter(t=>t.Priority===sec.key&&t.Status!=="Completed");
-        if(!items.length) return null;
-        return(
-          <div key={sec.key} style={{marginBottom:22}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              <span style={{width:10,height:10,borderRadius:"50%",background:sec.color,display:"inline-block"}}/>
-              <span style={{fontSize:13,fontWeight:700,color:"#374151"}}>{sec.label}</span>
-              <span style={{fontSize:12,color:"#9CA3AF"}}>({items.length})</span>
-            </div>
-            {items.map(t=>{
-              const dept=DEPTS.find(d=>d.notionName===t.Department);
-              return(
-                <div key={t._id} className="task-row" onClick={()=>setSelTask(t)}
-                  style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:"14px 18px",marginBottom:8,borderLeft:`4px solid ${pCol(t.Priority)}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,transition:"background .15s"}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:600,color:"#111827",marginBottom:6}}>{t["Task"]||"Untitled"}</div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                      {dept&&<span style={{fontSize:12,color:dept.color,fontWeight:500}}>{dept.icon} {dept.notionName}</span>}
-                      {t.Owner&&<span style={{fontSize:12,color:"#9CA3AF"}}>👤 {t.Owner}</span>}
-                      {t.Deadline&&<span style={{fontSize:12,color:"#9CA3AF"}}>📅 {t.Deadline}</span>}
-                      {t.Notes&&<span style={{fontSize:12,color:"#9CA3AF"}}>· {t.Notes.slice(0,50)}</span>}
-                    </div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                    <Badge label={t.Status||"—"} bg={sBg(t.Status)} fg={sFg(t.Status)}/>
-                    <span style={{fontSize:11,color:"#9CA3AF"}}>click for details</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-      {tasks.filter(t=>t.Status==="Completed").length>0&&(
-        <div style={{marginBottom:22}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-            <span style={{width:10,height:10,borderRadius:"50%",background:"#10B981",display:"inline-block"}}/>
-            <span style={{fontSize:13,fontWeight:700,color:"#374151"}}>Completed</span>
-            <span style={{fontSize:12,color:"#9CA3AF"}}>({tasks.filter(t=>t.Status==="Completed").length})</span>
-          </div>
-          {tasks.filter(t=>t.Status==="Completed").map(t=>(
-            <div key={t._id} style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 18px",marginBottom:6,opacity:.55}}>
-              <span style={{fontSize:13,color:"#6B7280",textDecoration:"line-through"}}>{t["Task"]}</span>
-              <span style={{fontSize:12,color:"#9CA3AF",marginLeft:8}}>{t.Department}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {viewMode==="priority"  && <PriorityView/>}
+      {viewMode==="date"      && <DateGroupView/>}
+      {viewMode==="calendar"  && <CalendarView/>}
 
       {tasks.length===0&&!form&&(
         <Card style={{textAlign:"center",padding:"48px 24px"}}>
           <p style={{color:"#9CA3AF",fontSize:14,marginBottom:6}}>No tasks loaded from Notion yet.</p>
-          <p style={{color:"#D1D5DB",fontSize:12}}>Make sure your Notion Tasks database is connected to the NOVI OS integration.</p>
         </Card>
       )}
     </div>
   );
 }
 
+
 // ── DECISIONS VIEW ────────────────────────────────────────────────────────────
-function DecisionsView({decisions,pendDec,toast,load}) {
+function DecisionsView({decisions,pendDec,pendTaskApprovals=[],toast,load}) {
   const [form,setForm]=useState(null);
   const empty={decisionTitle:"",department:"HQ",decisionSummary:"",reasoning:"",risks:"",founderApproval:"Pending",longTermImpact:""};
 
@@ -929,11 +1188,37 @@ function DecisionsView({decisions,pendDec,toast,load}) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,flexWrap:"wrap",gap:12}}>
         <div>
-          <SectionTitle>Decision Log</SectionTitle>
-          <SectionSub>Institutional memory · {decisions.length} total · {pendDec.length} pending approval</SectionSub>
+          <SectionTitle>Decision Log & Approvals</SectionTitle>
+          <SectionSub>Institutional memory · {decisions.length} decisions · {pendDec.length + pendTaskApprovals.length} total pending approval</SectionSub>
         </div>
         <Btn onClick={()=>setForm({...empty})}><Ic n="plus" s={14}/> Log Decision</Btn>
       </div>
+
+      {/* Tasks needing founder approval */}
+      {pendTaskApprovals.length>0&&(
+        <Card style={{marginBottom:20,borderColor:"#FCA5A5",background:"#FFF5F5"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#991B1B",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+            ⚠️ Tasks Requiring Your Approval
+            <span style={{background:"#FEE2E2",color:"#991B1B",fontSize:11,borderRadius:20,padding:"1px 8px"}}>{pendTaskApprovals.length}</span>
+          </div>
+          {pendTaskApprovals.map(t=>{
+            const dept=DEPTS.find(d=>d.notionName===t.Department);
+            return(
+              <div key={t._id} style={{padding:"10px 0",borderBottom:"1px solid #FEE2E2",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:3}}>{t["Task"]||"Untitled"}</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {dept&&<span style={{fontSize:11,color:dept.color,fontWeight:500}}>{dept.icon} {dept.name}</span>}
+                    <span style={{fontSize:11,color:"#9CA3AF"}}>Priority: <strong style={{color:pCol(t.Priority)}}>{t.Priority}</strong></span>
+                    {t.Deadline&&<span style={{fontSize:11,color:"#9CA3AF"}}>📅 {t.Deadline}</span>}
+                  </div>
+                </div>
+                {t._url&&<a href={t._url} target="_blank" rel="noreferrer" style={{fontSize:11,color:"#4F46E5",textDecoration:"none",display:"flex",alignItems:"center",gap:4,flexShrink:0}}><Ic n="ext" s={11}/> Approve in Notion</a>}
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
       {form&&(
         <Card style={{marginBottom:24,borderColor:"#C7D2FE"}}>
